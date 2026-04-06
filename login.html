@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login – EduVerse Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&family=Fredoka+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <style>
+    .bg-shapes .shape { animation-duration: 30s !important; }
+    .floating-stars {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(2px 2px at 80% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 50% 20%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(2px 2px at 10% 90%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 10%, rgba(255,255,255,0.5) 0%, transparent 100%);
+    }
+    .back-link {
+      position: absolute; top: 1.5rem; left: 2rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      color: var(--text-muted); font-weight: 700; font-size: 0.9rem;
+      transition: color 0.3s; z-index: 10;
+    }
+    .back-link:hover { color: var(--sky); }
+    .login-school-preview {
+      display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem;
+    }
+    .preview-school {
+      display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+      opacity: 0.5; transition: opacity 0.3s, transform 0.3s; cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 12px;
+    }
+    .preview-school.active { 
+      opacity: 1; 
+      transform: scale(1.1);
+      background: rgba(255,255,255,0.05);
+    }
+    .preview-school:hover:not(.active) { 
+      opacity: 0.7; 
+      transform: scale(1.05);
+    }
+    .preview-school .preview-emoji { font-size: 2.5rem; }
+    .preview-school .preview-name { font-size: 0.75rem; font-weight: 700; }
+    .role-selector { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:1.5rem; }
+    .role-btn {
+      padding:0.7rem 0.5rem; border-radius:12px; border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.04); cursor:pointer; text-align:center;
+      transition:all 0.3s; color:var(--text-muted); font-family:var(--font-body);
+      font-weight:700; font-size:0.85rem;
+    }
+    .role-btn .role-icon { display:block; font-size:1.5rem; margin-bottom:0.2rem; }
+    .role-btn.active {
+      background:rgba(107,203,247,0.12); border-color:var(--sky); color:var(--sky);
+      box-shadow: 0 0 20px rgba(107,203,247,0.15);
+    }
+    .role-btn:hover:not(.active) { border-color:rgba(255,255,255,0.2); color:var(--text-light); }
+    
+    /* Alert styles */
+    .alert {
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      animation: slideDown 0.3s ease-out;
+    }
+    .alert.visible { display: flex; }
+    .alert-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+    }
+    .alert-success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #86EFAC;
+    }
+    .alert-warning {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #FCD34D;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+    .shake { animation: shake 0.5s; }
+    
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 14, 46, 0.9);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .loading-overlay.visible { display: flex; }
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(107, 203, 247, 0.2);
+      border-top-color: var(--sky);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="login-body">
+
+  <div class="floating-stars"></div>
+  <div class="bg-shapes" aria-hidden="true">
+    <div class="shape s1">⭐</div><div class="shape s3">🌟</div>
+    <div class="shape s5">📚</div><div class="shape s7">🎓</div>
+    <div class="shape s9">✏️</div><div class="shape s11">💡</div>
+  </div>
+
+  <a href="index.php" class="back-link">← Back to Home</a>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <div class="login-container">
+    <div class="login-card" id="loginCard">
+      <div class="login-header">
+        <span class="login-logo">🎓</span>
+        <h1 class="login-title">Welcome Back!</h1>
+        <p class="login-sub">Sign in to your EduVerse portal</p>
+      </div>
+
+      <!-- Alert messages -->
+      <div class="alert alert-error" id="alertError">
+        <span>❌</span>
+        <span id="alertErrorText">An error occurred</span>
+      </div>
+      <div class="alert alert-success" id="alertSuccess">
+        <span>✅</span>
+        <span id="alertSuccessText">Login successful!</span>
+      </div>
+      <div class="alert alert-warning" id="alertWarning">
+        <span>⚠️</span>
+        <span id="alertWarningText">Warning</span>
+      </div>
+
+      <!-- School selector -->
+      <div class="login-school-preview">
+        <div class="preview-school active" data-school="brightstar" onclick="selectSchool('brightstar')">
+          <span class="preview-emoji">🦁</span>
+          <span class="preview-name">BrightStar</span>
+        </div>
+        <div class="preview-school" data-school="both" onclick="selectSchool('both')">
+          <span class="preview-emoji">🏫</span>
+          <span class="preview-name">Both</span>
+        </div>
+        <div class="preview-school" data-school="moonrise" onclick="selectSchool('moonrise')">
+          <span class="preview-emoji">🦅</span>
+          <span class="preview-name">Moonrise</span>
+        </div>
+      </div>
+
+      <!-- Role selector -->
+      <div class="role-selector">
+        <button type="button" class="role-btn active" data-role="student" onclick="selectRole('student')">
+          <span class="role-icon">🎒</span>Student
+        </button>
+        <button type="button" class="role-btn" data-role="admin" onclick="selectRole('admin')">
+          <span class="role-icon">👨‍💼</span>Admin
+        </button>
+        <button type="button" class="role-btn" data-role="teacher" onclick="selectRole('teacher')">
+          <span class="role-icon">👩‍🏫</span>Teacher
+        </button>
+      </div>
+
+      <!-- Login form -->
+      <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
+        <div class="form-group">
+          <label class="form-label" for="username">Username / Student ID</label>
+          <div class="input-wrapper">
+            <input 
+              type="text" 
+              id="username" 
+              name="username"
+              class="form-input" 
+              placeholder="Enter your ID or username" 
+              required 
+              autocomplete="username"
+              autofocus
+            >
+          </div>
+          <span class="error-msg" id="userError">Please enter your username</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="input-wrapper">
+            <input 
+              type="password" 
+              id="password" 
+              name="password"
+              class="form-input" 
+              placeholder="Enter your password" 
+              required 
+              autocomplete="current-password"
+            >
+            <span class="input-icon" onclick="togglePassword()" title="Show/Hide password" style="cursor: pointer;">👁️</span>
+          </div>
+          <span class="error-msg" id="passError">Please enter your password</span>
+        </div>
+
+        <!-- Hidden school & role fields -->
+        <input type="hidden" id="schoolField" name="school" value="brightstar">
+        <input type="hidden" id="roleField" name="role" value="student">
+
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:var(--text-muted); cursor:pointer;">
+            <input type="checkbox" id="rememberMe" style="accent-color:var(--sky)"> Remember me
+          </label>
+          <a href="#" onclick="showForgotPassword(); return false;" style="color:var(--sky); font-size:0.85rem; font-weight:600;">
+            Forgot password?
+          </a>
+        </div>
+
+        <button type="submit" class="btn-login-submit" id="loginBtn">
+          <span id="loginBtnText">Sign In ✨</span>
+        </button>
+      </form>
+
+      <div class="login-footer-links" style="margin-top:2rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:1.2rem;">
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.5rem;">
+          Don't have an account? Contact your school admin.
+        </p>
+        <a href="index.php#schools" style="color:var(--sky); font-size:0.88rem; font-weight:700;">
+          ← Explore Our Schools
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // EDUVERSE LOGIN - CORRECTED VERSION
+    // Fixed redirect paths for actual file structure
+    // ============================================
+
+    'use strict';
+
+    // State management
+    let selectedSchool = 'brightstar';
+    let selectedRole = 'student';
+    let loginAttempts = 0;
+    const MAX_ATTEMPTS = 5;
+
+    // ============ INITIALIZATION ============
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('✅ Login page loaded');
+      loadRememberedUsername();
+    });
+
+    // ============ SCHOOL SELECTION ============
+    function selectSchool(school) {
+      selectedSchool = school;
+      document.getElementById('schoolField').value = school;
+      
+      document.querySelectorAll('.preview-school').forEach(el => {
+        el.classList.remove('active');
+        if (el.dataset.school === school) {
+          el.classList.add('active');
+        }
+      });
+      
+      console.log('🏫 Selected school:', school);
+    }
+
+    // ============ ROLE SELECTION ============
+    function selectRole(role) {
+      selectedRole = role;
+      document.getElementById('roleField').value = role;
+      
+      document.querySelectorAll('.role-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.role === role);
+      });
+      
+      console.log('👤 Selected role:', role);
+    }
+
+    // ============ PASSWORD TOGGLE ============
+    function togglePassword() {
+      const passwordInput = document.getElementById('password');
+      const icon = event.target;
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.textContent = '🔒';
+      } else {
+        passwordInput.type = 'password';
+        icon.textContent = '👁️';
+      }
+    }
+
+    // ============ REMEMBER ME ============
+    function loadRememberedUsername() {
+      const remembered = localStorage.getItem('eduverse_username');
+      const rememberCheckbox = document.getElementById('rememberMe');
+      
+      if (remembered) {
+        document.getElementById('username').value = remembered;
+        rememberCheckbox.checked = true;
+      }
+    }
+
+    function saveRememberedUsername(username) {
+      const rememberCheckbox = document.getElementById('rememberMe');
+      
+      if (rememberCheckbox.checked) {
+        localStorage.setItem('eduverse_username', username);
+      } else {
+        localStorage.removeItem('eduverse_username');
+      }
+    }
+
+    // ============ ALERT FUNCTIONS ============
+    function showAlert(type, message) {
+      hideAllAlerts();
+      
+      const alertEl = document.getElementById('alert' + capitalize(type));
+      const textEl = document.getElementById('alert' + capitalize(type) + 'Text');
+      
+      if (alertEl && textEl) {
+        textEl.textContent = message;
+        alertEl.classList.add('visible');
+        
+        setTimeout(() => {
+          alertEl.classList.remove('visible');
+        }, 5000);
+      }
+    }
+
+    function hideAllAlerts() {
+      document.querySelectorAll('.alert').forEach(alert => {
+        alert.classList.remove('visible');
+      });
+      document.querySelectorAll('.error-msg').forEach(error => {
+        error.classList.remove('visible');
+      });
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // ============ LOADING STATE ============
+    function setLoading(isLoading) {
+      const btn = document.getElementById('loginBtn');
+      const btnText = document.getElementById('loginBtnText');
+      const overlay = document.getElementById('loadingOverlay');
+      
+      if (isLoading) {
+        btn.disabled = true;
+        btnText.textContent = '🔄 Signing in...';
+        overlay.classList.add('visible');
+      } else {
+        btn.disabled = false;
+        btnText.textContent = 'Sign In ✨';
+        overlay.classList.remove('visible');
+      }
+    }
+
+    // ============ VALIDATION ============
+    function validateForm() {
+      hideAllAlerts();
+      
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      let isValid = true;
+
+      if (!username) {
+        document.getElementById('userError').classList.add('visible');
+        isValid = false;
+      }
+
+      if (!password) {
+        document.getElementById('passError').classList.add('visible');
+        isValid = false;
+      }
+
+      if (loginAttempts >= MAX_ATTEMPTS) {
+        showAlert('error', 'Too many failed attempts. Please wait 5 minutes.');
+        isValid = false;
+      }
+
+      return isValid;
+    }
+
+    // ============ LOGIN HANDLER ============
+    async function handleLogin(event) {
+      event.preventDefault();
+      
+      if (!validateForm()) {
+        shakeCard();
+        return;
+      }
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      
+      setLoading(true);
+      
+      try {
+        const response = await fetch('php/login.php', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            username: username,
+            password: password,
+            school: selectedSchool,
+            role: selectedRole
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          loginAttempts = 0;
+          console.log('✅ Login successful:', data);
+          
+          saveRememberedUsername(username);
+          showAlert('success', 'Login successful! Redirecting...');
+          document.getElementById('loginBtnText').textContent = '✅ Success!';
+          
+          setTimeout(() => {
+            redirectToDashboard(data.role, data.school);
+          }, 1000);
+          
+        } else {
+          loginAttempts++;
+          setLoading(false);
+          
+          const errorMessage = data.message || data.error || 'Invalid credentials';
+          console.error('❌ Login failed:', errorMessage);
+          
+          showAlert('error', errorMessage);
+          shakeCard();
+          
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+        }
+        
+      } catch (error) {
+        setLoading(false);
+        console.error('❌ Login error:', error);
+        showAlert('error', 'Connection error. Please try again.');
+        shakeCard();
+      }
+    }
+
+    // ============ REDIRECT LOGIC - FIXED ============
+    function redirectToDashboard(role, school) {
+      console.log('🔀 Redirecting. Role:', role, 'School:', school);
+      
+      // Redirect to actual file locations
+      if (role === 'admin') {
+        window.location.href = 'admin/index.html';
+      } else if (role === 'student') {
+        window.location.href = 'student-dashboard.php';
+      } else if (role === 'teacher') {
+        window.location.href = 'teacher-dashboard.php?school=' + school;
+      } else {
+        console.warn('⚠️ Unknown role:', role);
+        window.location.href = 'index.php';
+      }
+    }
+
+    // ============ ANIMATIONS ============
+    function shakeCard() {
+      const card = document.getElementById('loginCard');
+      card.classList.add('shake');
+      setTimeout(() => {
+        card.classList.remove('shake');
+      }, 500);
+    }
+
+    // ============ FORGOT PASSWORD ============
+    function showForgotPassword() {
+      showAlert('warning', 'Please contact your school administrator to reset your password.');
+    }
+  </script>
+</body>
+</html>

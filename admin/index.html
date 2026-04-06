@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel – EduVerse Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/animations.css">
+</head>
+<body>
+
+  <div class="admin-layout">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">🎓</span>
+        <span class="brand-text">EduVerse</span>
+      </div>
+
+      <div class="sidebar-school-switcher">
+        <div class="school-switch-label">Active School</div>
+        <button class="school-switch-btn" onclick="openSchoolModal()">
+          <span id="activeSchoolLabel">🦁 BrightStar Academy</span>
+          <span>⇅</span>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Main</div>
+        <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+          <span class="nav-icon">📊</span> Dashboard
+        </div>
+        <div class="nav-item" onclick="showPage('registrations')" id="nav-registrations">
+          <span class="nav-icon">📋</span> Registrations
+          <span class="nav-badge" id="pendingBadge">3</span>
+        </div>
+        <div class="nav-item" onclick="showPage('users')" id="nav-users">
+          <span class="nav-icon">👥</span> Users
+        </div>
+
+        <div class="nav-section-title">Content</div>
+        <div class="nav-item" onclick="showPage('schools')" id="nav-schools">
+          <span class="nav-icon">🏫</span> School Profiles
+        </div>
+        <div class="nav-item" onclick="showPage('agegroups')" id="nav-agegroups">
+          <span class="nav-icon">🎂</span> Age Groups
+        </div>
+        <div class="nav-item" onclick="showPage('announcements')" id="nav-announcements">
+          <span class="nav-icon">📢</span> Announcements
+        </div>
+
+        <div class="nav-section-title">Settings</div>
+        <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
+          <span class="nav-icon">⚙️</span> Settings
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="admin-user">
+          <div class="user-avatar">A</div>
+          <div class="user-info">
+            <div class="user-name" id="adminName">Administrator</div>
+            <div class="user-role">Super Admin</div>
+          </div>
+          <button class="logout-btn" onclick="handleLogout()" title="Logout">↩</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="admin-main">
+      <!-- Topbar -->
+      <div class="admin-topbar">
+        <div style="display:flex; align-items:center; gap:1rem;">
+          <button class="topbar-btn" id="sidebarToggle" onclick="toggleSidebar()" style="display:none;">☰</button>
+          <h2 class="topbar-title" id="topbarTitle">Dashboard</h2>
+        </div>
+        <div class="topbar-right">
+          <input type="text" class="topbar-search" placeholder="🔍 Search students..." id="globalSearch" oninput="handleSearch(this.value)">
+          <button class="topbar-btn ping-badge" title="Notifications" onclick="showPage('registrations')">🔔</button>
+          <button class="topbar-btn" title="View Site" onclick="window.open('../index.html','_blank')">🌐</button>
+        </div>
+      </div>
+
+      <!-- ===== DASHBOARD PAGE ===== -->
+      <div class="admin-page active" id="page-dashboard">
+        <div class="page-header">
+          <h2 class="page-title">📊 Dashboard Overview</h2>
+          <p class="page-subtitle">Welcome back! Here's what's happening across your schools.</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card" style="--stat-color:#6BCBF7;">
+            <span class="stat-icon">👥</span>
+            <div class="stat-value counter" data-target="2180">0</div>
+            <div class="stat-label">Total Students</div>
+            <span class="stat-trend up">↑ 12%</span>
+          </div>
+          <div class="stat-card" style="--stat-color:#A78BFA;">
+            <span class="stat-icon">👨‍🏫</span>
+            <div class="stat-value counter" data-target="157">0</div>
+            <div class="stat-label">Total Staff</div>
+            <span class="stat-trend up">↑ 5%</span>
+          </div>
+          <div class="stat-card" style="--stat-color:#FACC15;">
+            <span class="stat-icon">📋</span>
+            <div class="stat-value counter" data-target="3">0</div>
+            <div class="stat-label">Pending Registrations</div>
+            <span class="stat-trend" style="color:#FACC15;">● New</span>
+          </div>
+          <div class="stat-card" style="--stat-color:#4ADE80;">
+            <span class="stat-icon">🏫</span>
+            <div class="stat-value">2</div>
+            <div class="stat-label">Active Schools</div>
+            <span class="stat-trend up">✓ All Good</span>
+          </div>
+        </div>
+
+        <div class="two-col-grid">
+          <!-- Recent Registrations -->
+          <div class="admin-table-wrap">
+            <div class="table-header">
+              <span class="table-title">🆕 Recent Registrations</span>
+              <button class="action-btn" onclick="showPage('registrations')">View All →</button>
+            </div>
+            <table class="admin-table">
+              <thead><tr>
+                <th>Student</th><th>School</th><th>Age Group</th><th>Status</th>
+              </tr></thead>
+              <tbody id="recentRegsTbody">
+                <tr><td colspan="4" style="text-align:center;color:var(--admin-muted);padding:2rem;"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Stats by School -->
+          <div class="chart-card">
+            <div class="chart-title">📈 Students by School</div>
+            <div style="margin-bottom:1.5rem;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                <span style="font-size:0.9rem;">🦁 BrightStar Academy</span>
+                <span style="font-size:0.9rem; color:var(--admin-primary);">1,200 students</span>
+              </div>
+              <div style="background:rgba(255,255,255,0.08); border-radius:4px; height:10px; overflow:hidden;">
+                <div style="height:100%; width:55%; background:linear-gradient(90deg,var(--admin-primary),#4F46E5); border-radius:4px; animation:barGrow 1.5s ease both;"></div>
+              </div>
+            </div>
+            <div style="margin-bottom:1.5rem;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                <span style="font-size:0.9rem;">🦅 Moonrise Institute</span>
+                <span style="font-size:0.9rem; color:#14B8A6;">980 students</span>
+              </div>
+              <div style="background:rgba(255,255,255,0.08); border-radius:4px; height:10px; overflow:hidden;">
+                <div style="height:100%; width:45%; background:linear-gradient(90deg,#14B8A6,#A78BFA); border-radius:4px; animation:barGrow 1.8s ease both;"></div>
+              </div>
+            </div>
+            <div class="chart-title" style="margin-top:1.5rem;">📊 By Age Group</div>
+            <div class="mini-bar-chart" id="ageBarChart"></div>
+            <div class="chart-labels" id="ageChartLabels"></div>
+          </div>
+        </div>
+
+        <style>
+          @keyframes barGrow { from{width:0} }
+        </style>
+      </div>
+
+      <!-- ===== REGISTRATIONS PAGE ===== -->
+      <div class="admin-page" id="page-registrations">
+        <div class="page-header">
+          <h2 class="page-title">📋 Registration Management</h2>
+          <p class="page-subtitle">Review, approve, and manage student registrations</p>
+        </div>
+        <div class="school-header-bar">
+          <span style="font-size:0.88rem; color:var(--admin-muted); font-weight:700;">Filter by school:</span>
+          <button class="school-selector-btn active brightstar" onclick="filterBySchool('brightstar',this)">🦁 BrightStar</button>
+          <button class="school-selector-btn" onclick="filterBySchool('moonrise',this)">🦅 Moonrise</button>
+          <button class="school-selector-btn" onclick="filterBySchool('all',this)">All Schools</button>
+          <div style="margin-left:auto; display:flex; gap:0.5rem;">
+            <select class="admin-form-select" id="statusFilter" onchange="filterRegistrations()" style="padding:0.4rem 1rem; font-size:0.85rem; width:auto;">
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="table-header">
+            <span class="table-title">📝 Applications</span>
+            <div class="table-actions">
+              <button class="action-btn edit" onclick="exportRegistrations()" title="Export CSV">📥 Export</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr>
+                <th>Student Name</th><th>School</th><th>Age Group</th><th>Parent</th><th>Email</th><th>Date</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="regsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== USERS PAGE ===== -->
+      <div class="admin-page" id="page-users">
+        <div class="page-header">
+          <h2 class="page-title">👥 User Management</h2>
+          <p class="page-subtitle">Manage login credentials for students, parents, and teachers</p>
+        </div>
+        <div class="admin-table-wrap" style="margin-bottom:1.5rem;">
+          <div class="table-header">
+            <span class="table-title">👤 All Users</span>
+            <div class="table-actions">
+              <button class="btn-save" onclick="openUserModal(null)">+ Add User</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr>
+                <th>Name</th><th>Username</th><th>Role</th><th>School</th><th>Age Group</th><th>Status</th><th>Last Login</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="usersTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SCHOOLS PAGE ===== -->
+      <div class="admin-page" id="page-schools">
+        <div class="page-header">
+          <h2 class="page-title">🏫 School Profiles</h2>
+          <p class="page-subtitle">Edit school information, descriptions, and features</p>
+        </div>
+        <div class="two-col-grid">
+          <!-- BrightStar -->
+          <div class="chart-card" style="border:1px solid rgba(107,203,247,0.3);">
+            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+              <span style="font-size:3rem;">🦁</span>
+              <div>
+                <h3 style="font-family:var(--font-title);" id="bs-name-display">BrightStar Academy</h3>
+                <span class="badge badge-brightstar">School A</span>
+              </div>
+              <button class="btn-save" style="margin-left:auto;" onclick="openSchoolEdit('brightstar')">✏️ Edit</button>
+            </div>
+            <div class="admin-form-group">
+              <div class="admin-form-label">Motto</div>
+              <div id="bs-motto-display" style="color:var(--admin-muted); font-style:italic;">✨ "Where Every Star Shines"</div>
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">Description</div>
+              <div id="bs-desc-display" style="color:var(--admin-muted); font-size:0.9rem; line-height:1.6;">A premier institution focusing on STEM excellence, arts, and holistic development.</div>
+            </div>
+            <div style="margin-top:1rem;">
+              <div class="admin-form-label">Features</div>
+              <div id="bs-features-display" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;"></div>
+            </div>
+          </div>
+          <!-- Moonrise -->
+          <div class="chart-card" style="border:1px solid rgba(20,184,166,0.3);">
+            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+              <span style="font-size:3rem;">🦅</span>
+              <div>
+                <h3 style="font-family:var(--font-title);" id="mr-name-display">Moonrise Institute</h3>
+                <span class="badge badge-moonrise">School B</span>
+              </div>
+              <button class="btn-save" style="margin-left:auto; background:linear-gradient(135deg,#14B8A6,#A78BFA);" onclick="openSchoolEdit('moonrise')">✏️ Edit</button>
+            </div>
+            <div class="admin-form-group">
+              <div class="admin-form-label">Motto</div>
+              <div id="mr-motto-display" style="color:var(--admin-muted); font-style:italic;">🌙 "Reach Beyond the Stars"</div>
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">Description</div>
+              <div id="mr-desc-display" style="color:var(--admin-muted); font-size:0.9rem; line-height:1.6;">Nurturing creativity, environmental consciousness, and academic excellence.</div>
+            </div>
+            <div style="margin-top:1rem;">
+              <div class="admin-form-label">Features</div>
+              <div id="mr-features-display" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AGE GROUPS PAGE ===== -->
+      <div class="admin-page" id="page-agegroups">
+        <div class="page-header">
+          <h2 class="page-title">🎂 Age Groups</h2>
+          <p class="page-subtitle">Manage age group definitions and descriptions</p>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="table-header">
+            <span class="table-title">Age Group Configuration</span>
+            <button class="btn-save" onclick="openAgeModal(null)">+ Add Group</button>
+          </div>
+          <table class="admin-table">
+            <thead><tr>
+              <th>Icon</th><th>Name</th><th>Age Range</th><th>Level</th><th>Description</th><th>Students</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="ageTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== ANNOUNCEMENTS PAGE ===== -->
+      <div class="admin-page" id="page-announcements">
+        <div class="page-header">
+          <h2 class="page-title">📢 Announcements</h2>
+          <p class="page-subtitle">Post announcements visible on the portal</p>
+        </div>
+        <div class="two-col-grid" style="align-items:start;">
+          <div class="chart-card">
+            <h3 style="margin-bottom:1.2rem; font-size:1rem;">✍️ New Announcement</h3>
+            <div class="admin-form-group">
+              <div class="admin-form-label">Title</div>
+              <input type="text" class="admin-form-input" id="annTitle" placeholder="Announcement title">
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">Message</div>
+              <textarea class="admin-form-textarea" id="annBody" placeholder="Write your announcement here..." rows="4"></textarea>
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">Target School</div>
+              <select class="admin-form-select" id="annSchool">
+                <option value="all">📢 All Schools</option>
+                <option value="brightstar">🦁 BrightStar Only</option>
+                <option value="moonrise">🦅 Moonrise Only</option>
+              </select>
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">Priority</div>
+              <select class="admin-form-select" id="annPriority">
+                <option value="normal">Normal</option>
+                <option value="urgent">🚨 Urgent</option>
+                <option value="info">ℹ️ Info</option>
+              </select>
+            </div>
+            <button class="btn-save" style="margin-top:1.2rem; width:100%;" onclick="postAnnouncement()">📢 Post Announcement</button>
+          </div>
+          <div class="chart-card">
+            <h3 style="margin-bottom:1.2rem; font-size:1rem;">📋 Posted Announcements</h3>
+            <div id="annList" style="display:flex; flex-direction:column; gap:0.8rem;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SETTINGS PAGE ===== -->
+      <div class="admin-page" id="page-settings">
+        <div class="page-header">
+          <h2 class="page-title">⚙️ Portal Settings</h2>
+          <p class="page-subtitle">Configure portal options and admin credentials</p>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start;">
+          <div class="chart-card">
+            <h3 style="margin-bottom:1.5rem;">🔐 Change Admin Password</h3>
+            <div class="admin-form-group">
+              <div class="admin-form-label">Current Password</div>
+              <input type="password" class="admin-form-input" id="curPass" placeholder="Current password">
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">New Password</div>
+              <input type="password" class="admin-form-input" id="newPass" placeholder="New password">
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">Confirm Password</div>
+              <input type="password" class="admin-form-input" id="confPass" placeholder="Confirm new password">
+            </div>
+            <button class="btn-save" style="margin-top:1.2rem;" onclick="changePassword()">🔐 Update Password</button>
+          </div>
+          <div class="chart-card">
+            <h3 style="margin-bottom:1.5rem;">⚙️ Portal Configuration</h3>
+            <div class="admin-form-group">
+              <div class="admin-form-label">Portal Name</div>
+              <input type="text" class="admin-form-input" id="portalName" value="EduVerse Portal" placeholder="Portal name">
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">Registration Open</div>
+              <select class="admin-form-select" id="regOpen">
+                <option value="1">✅ Open - Accepting Registrations</option>
+                <option value="0">🔒 Closed - No New Registrations</option>
+              </select>
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">Admin Email</div>
+              <input type="email" class="admin-form-input" id="adminEmail" placeholder="admin@school.edu">
+            </div>
+            <button class="btn-save" style="margin-top:1.2rem;" onclick="saveSettings()">💾 Save Settings</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- .admin-layout -->
+
+  <!-- ===== MODALS ===== -->
+
+  <!-- Add/Edit User Modal -->
+  <div class="modal-overlay" id="userModal">
+    <div class="modal">
+      <h3 class="modal-title" id="userModalTitle">👤 Add New User</h3>
+      <div class="admin-form-grid">
+        <div class="admin-form-group">
+          <label class="admin-form-label">First Name *</label>
+          <input type="text" class="admin-form-input" id="uFirstName" placeholder="First name">
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Last Name *</label>
+          <input type="text" class="admin-form-input" id="uLastName" placeholder="Last name">
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Username *</label>
+          <input type="text" class="admin-form-input" id="uUsername" placeholder="e.g. alex.johnson">
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Password *</label>
+          <input type="password" class="admin-form-input" id="uPassword" placeholder="Set password">
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Role *</label>
+          <select class="admin-form-select" id="uRole">
+            <option value="student">🎒 Student</option>
+            <option value="parent">👨‍👩‍👧 Parent</option>
+            <option value="teacher">👩‍🏫 Teacher</option>
+            <option value="admin">🔑 Admin</option>
+          </select>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">School *</label>
+          <select class="admin-form-select" id="uSchool">
+            <option value="brightstar">🦁 BrightStar Academy</option>
+            <option value="moonrise">🦅 Moonrise Institute</option>
+            <option value="both">🏫 Both Schools</option>
+          </select>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Age Group</label>
+          <select class="admin-form-select" id="uAgeGroup">
+            <option value="">N/A</option>
+            <option value="tiny">🌱 Tiny Sprouts (3–5)</option>
+            <option value="junior">🌿 Junior Explorers (6–8)</option>
+            <option value="discover">🌳 Discoverers (9–11)</option>
+            <option value="pioneer">🚀 Pioneers (12–14)</option>
+            <option value="champion">🏆 Champions (15–18)</option>
+          </select>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Status</label>
+          <select class="admin-form-select" id="uStatus">
+            <option value="active">✅ Active</option>
+            <option value="inactive">🔒 Inactive</option>
+          </select>
+        </div>
+        <div class="admin-form-group full">
+          <label class="admin-form-label">Email</label>
+          <input type="email" class="admin-form-input" id="uEmail" placeholder="user@email.com">
+        </div>
+      </div>
+      <input type="hidden" id="uEditId" value="">
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('userModal')">Cancel</button>
+        <button class="btn-save" onclick="saveUser()">💾 Save User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- School Edit Modal -->
+  <div class="modal-overlay" id="schoolModal">
+    <div class="modal">
+      <h3 class="modal-title" id="schoolModalTitle">🏫 Edit School Profile</h3>
+      <input type="hidden" id="editSchoolKey">
+      <div class="admin-form-grid">
+        <div class="admin-form-group full">
+          <label class="admin-form-label">School Name *</label>
+          <input type="text" class="admin-form-input" id="sName" placeholder="School name">
+        </div>
+        <div class="admin-form-group full">
+          <label class="admin-form-label">Motto</label>
+          <input type="text" class="admin-form-input" id="sMotto" placeholder="School motto">
+        </div>
+        <div class="admin-form-group full">
+          <label class="admin-form-label">Description</label>
+          <textarea class="admin-form-textarea" id="sDesc" rows="3" placeholder="School description..."></textarea>
+        </div>
+        <div class="admin-form-group full">
+          <label class="admin-form-label">Features (one per line)</label>
+          <textarea class="admin-form-textarea" id="sFeatures" rows="4" placeholder="🔬 STEM Excellence&#10;🎭 Arts & Drama&#10;⚽ Sports Academy"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('schoolModal')">Cancel</button>
+        <button class="btn-save" onclick="saveSchool()">💾 Save School</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Age Group Modal -->
+  <div class="modal-overlay" id="ageModal">
+    <div class="modal">
+      <h3 class="modal-title" id="ageModalTitle">🎂 Age Group</h3>
+      <input type="hidden" id="ageEditId">
+      <div class="admin-form-grid">
+        <div class="admin-form-group">
+          <label class="admin-form-label">Icon (emoji)</label>
+          <input type="text" class="admin-form-input" id="agIcon" placeholder="🌱">
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Group Name *</label>
+          <input type="text" class="admin-form-input" id="agName" placeholder="Tiny Sprouts">
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Min Age *</label>
+          <input type="number" class="admin-form-input" id="agMin" min="3" max="18" placeholder="3">
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-label">Max Age *</label>
+          <input type="number" class="admin-form-input" id="agMax" min="3" max="18" placeholder="5">
+        </div>
+        <div class="admin-form-group full">
+          <label class="admin-form-label">Level/Class</label>
+          <input type="text" class="admin-form-input" id="agLevel" placeholder="Nursery, Primary 1-2, etc.">
+        </div>
+        <div class="admin-form-group full">
+          <label class="admin-form-label">Description</label>
+          <textarea class="admin-form-textarea" id="agDesc" rows="2" placeholder="Brief description..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('ageModal')">Cancel</button>
+        <button class="btn-save" onclick="saveAgeGroup()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- School Switcher Modal -->
+  <div class="modal-overlay" id="schoolSwitchModal">
+    <div class="modal" style="max-width:360px;">
+      <h3 class="modal-title">🏫 Switch School View</h3>
+      <div style="display:flex; flex-direction:column; gap:0.8rem; margin-bottom:1.5rem;">
+        <button class="school-switch-btn" style="justify-content:flex-start; gap:1rem; padding:1rem;" onclick="switchActiveSchool('brightstar')">
+          <span style="font-size:2rem;">🦁</span>
+          <div>
+            <div style="font-weight:800;">BrightStar Academy</div>
+            <div style="font-size:0.8rem; color:var(--admin-muted);">1,200 students</div>
+          </div>
+        </button>
+        <button class="school-switch-btn" style="justify-content:flex-start; gap:1rem; padding:1rem;" onclick="switchActiveSchool('moonrise')">
+          <span style="font-size:2rem;">🦅</span>
+          <div>
+            <div style="font-weight:800;">Moonrise Institute</div>
+            <div style="font-size:0.8rem; color:var(--admin-muted);">980 students</div>
+          </div>
+        </button>
+        <button class="school-switch-btn" style="justify-content:flex-start; gap:1rem; padding:1rem;" onclick="switchActiveSchool('all')">
+          <span style="font-size:2rem;">🏫</span>
+          <div>
+            <div style="font-weight:800;">All Schools</div>
+            <div style="font-size:0.8rem; color:var(--admin-muted);">2,180 total students</div>
+          </div>
+        </button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('schoolSwitchModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="../js/admin.js"></script>
+</body>
+</html>
