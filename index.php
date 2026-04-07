@@ -47,10 +47,10 @@ try {
 
 // Helper function to decode features
 function getFeatures($school) {
-    if (is_string($school['features'])) {
-        return json_decode($school['features'], true) ?: [];
+    if (is_string($school['description'])) {
+        return json_decode($school['description'], true) ?: [];
     }
-    return is_array($school['features']) ? $school['features'] : [];
+    return is_array($school['description']) ? $school['description'] : [];
 }
 
 // Get BrightStar and Moonrise data
