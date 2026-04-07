@@ -1,935 +1,837 @@
 /* ============================================
-   EDUVERSE PORTAL – ADMIN JAVASCRIPT (PRODUCTION)
-   Fully connected to PHP backend with proper error handling
+   ADMIN PANEL - JavaScript
+   Dynamic data loading and interactions
    ============================================ */
 
-'use strict';
+// Global state
+let currentSchoolFilter = 'all';
+let allRegistrations = [];
+let allUsers = [];
 
-// Current school context
-let currentSchool = 'all';
+// ==================== INITIALIZATION ====================
+document.addEventListener('DOMContentLoaded', function() {
+    // Load dashboard data
+    loadDashboardStats();
+    loadRecentRegistrations();
+    
+    // Initialize counters animation
+    animateCounters();
+    
+    console.log('Admin panel loaded. User:', SESSION_DATA.adminName);
+});
 
-// ============ NAVIGATION ============
-function showPage(page) {
-  document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  
-  const pageEl = document.getElementById('page-' + page);
-  if (pageEl) pageEl.classList.add('active');
-  
-  const navEl = document.getElementById('nav-' + page);
-  if (navEl) navEl.classList.add('active');
-  
-  const titles = { 
-    dashboard:'📊 Dashboard', 
-    registrations:'📋 Registrations', 
-    users:'👥 Users', 
-    schools:'🏫 School Profiles', 
-    agegroups:'🎂 Age Groups', 
-    announcements:'📢 Announcements', 
-    settings:'⚙️ Settings' 
-  };
-  
-  document.getElementById('topbarTitle').textContent = titles[page] || page;
-  loadPageData(page);
-}
-
-function loadPageData(page) {
-  switch(page) {
-    case 'dashboard': loadDashboard(); break;
-    case 'registrations': loadRegistrations(); break;
-    case 'users': loadUsers(); break;
-    case 'schools': loadSchools(); break;
-    case 'agegroups': loadAgeGroups(); break;
-    case 'announcements': loadAnnouncements(); break;
-    case 'settings': loadSettings(); break;
-  }
-}
-
-// ============ API HELPER ============
-async function apiRequest(url, options = {}) {
-  try {
-    const response = await fetch(url, {
-      credentials: 'include',
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
+// ==================== PAGE NAVIGATION ====================
+function showPage(pageId) {
+    // Hide all pages
+    document.querySelectorAll('.admin-page').forEach(page => {
+        page.classList.remove('active');
     });
     
-    // Handle 401 Unauthorized
-    if (response.status === 401) {
-      console.error('❌ 401 Unauthorized - Session expired or not logged in');
-      showToast('Session expired. Please login again.', 'error');
-      setTimeout(() => {
-        window.location.href = '../login.html';
-      }, 2000);
-      throw new Error('Unauthorized - Session expired');
-    }
-    
-    const data = await response.json();
-    
-    if (!data.success && data.error) {
-      throw new Error(data.error.message || data.message || 'Request failed');
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('API Error:', error);
-    
-    // Don't show toast for 401 (already handled above)
-    if (!error.message.includes('Unauthorized')) {
-      showToast('Error: ' + error.message, 'error');
-    }
-    
-    throw error;
-  }
-}
-
-// ============ DASHBOARD ============
-async function loadDashboard() {
-  try {
-    console.log('📊 Loading dashboard...');
-    
-    // Fetch real stats from database
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'get_stats' })
+    // Remove active from all nav items
+    document.querySelectorAll('.nav-item').forEach(nav => {
+        nav.classList.remove('active');
     });
     
-    if (data.success && data.stats) {
-      const stats = data.stats;
-      console.log('✅ Stats loaded:', stats);
-      
-      // Update stat cards with real data
-      updateCounter('[data-target="2180"]', stats.total || 0);
-      updateCounter('[data-target="157"]', stats.teachers || 0);
-      updateCounter('[data-target="3"]', stats.pending_regs || 0);
-      
-      // Update pending badge
-      const badge = document.getElementById('pendingBadge');
-      if (badge) badge.textContent = stats.pending_regs || 0;
-      
-      // Load recent registrations
-      loadRecentRegistrations();
+    // Show selected page
+    const page = document.getElementById('page-' + pageId);
+    if (page) {
+        page.classList.add('active');
     }
-  } catch (error) {
-    console.error('Dashboard load error:', error);
-    // Set default values on error
-    updateCounter('[data-target="2180"]', 0);
-    updateCounter('[data-target="157"]', 0);
-    updateCounter('[data-target="3"]', 0);
-  }
+    
+    // Highlight nav item
+    const navItem = document.getElementById('nav-' + pageId);
+    if (navItem) {
+        navItem.classList.add('active');
+    }
+    
+    // Update topbar title
+    const titles = {
+        'dashboard': 'Dashboard',
+        'registrations': 'Registrations',
+        'students': 'Students',
+        'results': 'Results Management',
+        'users': 'User Management',
+        'sessions': 'Academic Sessions',
+        'subjects': 'Subjects',
+        'attendance': 'Attendance',
+        'assignments': 'Assignments',
+        'schools': 'School Profiles',
+        'agegroups': 'Age Groups',
+        'announcements': 'Announcements',
+        'fees': 'Fee Management',
+        'settings': 'Settings'
+    };
+    document.getElementById('topbarTitle').textContent = titles[pageId] || 'Admin Panel';
+    
+    // Load page-specific data
+    switch(pageId) {
+        case 'registrations':
+            loadRegistrations();
+            break;
+        case 'students':
+            loadStudents();
+            break;
+        case 'results':
+            loadResults();
+            break;
+        case 'users':
+            loadUsers();
+            break;
+        case 'schools':
+            loadSchools();
+            break;
+        case 'agegroups':
+            loadAgeGroups();
+            break;
+        case 'announcements':
+            loadAnnouncements();
+            break;
+        case 'sessions':
+            loadSessions();
+            break;
+        case 'subjects':
+            loadSubjects();
+            break;
+    }
+}
+
+// ==================== DASHBOARD ====================
+async function loadDashboardStats() {
+    try {
+        const response = await fetch('php/admin-api.php?action=dashboard_stats');
+        const result = await response.json();
+        
+        if (result.success) {
+            const data = result.data;
+            
+            // Update stat cards
+            document.getElementById('stat-students').textContent = data.total_students;
+            document.getElementById('stat-students').setAttribute('data-target', data.total_students);
+            
+            document.getElementById('stat-users').textContent = data.total_users;
+            document.getElementById('stat-users').setAttribute('data-target', data.total_users);
+            
+            document.getElementById('stat-pending').textContent = data.pending_registrations;
+            document.getElementById('stat-pending').setAttribute('data-target', data.pending_registrations);
+            
+            document.getElementById('stat-schools').textContent = data.active_schools;
+            
+            // Update badge
+            document.getElementById('pendingBadge').textContent = data.pending_registrations;
+            if (data.pending_registrations > 0) {
+                document.getElementById('pendingBadge').style.display = 'inline-block';
+            } else {
+                document.getElementById('pendingBadge').style.display = 'none';
+            }
+            
+            // Render school stats
+            renderSchoolStats(data.by_school);
+            
+            // Render age group chart
+            renderAgeGroupChart(data.by_age_group);
+            
+            // Animate counters
+            animateCounters();
+        }
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
+
+function renderSchoolStats(schools) {
+    const container = document.getElementById('schoolStatsContainer');
+    if (!container) return;
+    
+    let html = '';
+    const total = schools.reduce((sum, school) => sum + parseInt(school.student_count), 0);
+    
+    schools.forEach(school => {
+        const percentage = total > 0 ? (school.student_count / total * 100) : 0;
+        const emoji = school.school_key === 'brightstar' ? '🦁' : '🦅';
+        const color = school.school_key === 'brightstar' ? 'var(--admin-primary)' : '#14B8A6';
+        
+        html += `
+            <div style="margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                    <span style="font-size:0.9rem;">${emoji} ${school.name}</span>
+                    <span style="font-size:0.9rem; color:${color};">${school.student_count} students</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.08); border-radius:4px; height:10px; overflow:hidden;">
+                    <div style="height:100%; width:${percentage}%; background:linear-gradient(90deg,${color},#4F46E5); border-radius:4px; animation:barGrow 1.5s ease both;"></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function renderAgeGroupChart(groups) {
+    const container = document.getElementById('ageBarChart');
+    if (!container) return;
+    
+    const maxCount = Math.max(...groups.map(g => g.student_count), 1);
+    
+    let html = '';
+    groups.forEach(group => {
+        const percentage = (group.student_count / maxCount) * 100;
+        html += `
+            <div style="margin-bottom:0.8rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.85rem;">
+                    <span>${group.icon} ${group.name}</span>
+                    <span style="color:var(--admin-primary);">${group.student_count}</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.08); border-radius:4px; height:8px; overflow:hidden;">
+                    <div style="height:100%; width:${percentage}%; background:linear-gradient(90deg,var(--admin-primary),#A78BFA); border-radius:4px;"></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
 }
 
 async function loadRecentRegistrations() {
-  try {
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        action: 'list_registrations',
-        school: 'all',
-        status: 'all'
-      })
-    });
-    
-    if (data.success && data.registrations) {
-      const recent = data.registrations.slice(0, 4);
-      const tbody = document.getElementById('recentRegsTbody');
-      
-      if (!tbody) return;
-      
-      if (recent.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--admin-muted);padding:2rem;">No registrations yet</td></tr>';
-        return;
-      }
-      
-      tbody.innerHTML = recent.map(r => `
-        <tr>
-          <td><strong>${r.first_name} ${r.last_name}</strong></td>
-          <td><span class="badge badge-${r.school_key}">${r.school_name}</span></td>
-          <td><span class="age-pill">${r.age_group_name || r.age_group_key}</span></td>
-          <td><span class="badge badge-${r.status}">${r.status}</span></td>
-        </tr>
-      `).join('');
+    try {
+        const response = await fetch('php/admin-api.php?action=get_registrations&limit=5');
+        const result = await response.json();
+        
+        if (result.success) {
+            const tbody = document.getElementById('recentRegsTbody');
+            
+            if (result.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--admin-muted);">No recent registrations</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = result.data.slice(0, 5).map(reg => `
+                <tr>
+                    <td><strong>${reg.first_name} ${reg.last_name}</strong></td>
+                    <td>${getSchoolEmoji(reg.school)} ${capitalizeFirst(reg.school)}</td>
+                    <td>${capitalizeFirst(reg.age_group)}</td>
+                    <td><span class="badge badge-${reg.status}">${capitalizeFirst(reg.status)}</span></td>
+                </tr>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading recent registrations:', error);
     }
-  } catch (error) {
-    console.error('Recent registrations error:', error);
-  }
 }
 
-function updateCounter(selector, target) {
-  const el = document.querySelector(selector);
-  if (!el) return;
-  
-  let current = 0;
-  const duration = 1800;
-  const step = target / (duration / 16);
-  
-  const timer = setInterval(() => {
-    current += step;
-    if (current >= target) {
-      current = target;
-      clearInterval(timer);
-    }
-    el.textContent = Math.floor(current).toLocaleString();
-  }, 16);
-}
-
-// ============ REGISTRATIONS ============
+// ==================== REGISTRATIONS ====================
 async function loadRegistrations() {
-  try {
-    const statusFilter = document.getElementById('statusFilter')?.value || 'all';
-    
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'list_registrations',
-        school: currentSchool,
-        status: statusFilter
-      })
-    });
-    
-    if (data.success && data.registrations) {
-      renderRegistrations(data.registrations);
+    try {
+        const school = currentSchoolFilter;
+        const status = document.getElementById('statusFilter')?.value || 'all';
+        
+        const response = await fetch(`php/admin-api.php?action=get_registrations&school=${school}&status=${status}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            allRegistrations = result.data;
+            renderRegistrations(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading registrations:', error);
+        showToast('Error loading registrations', 'error');
     }
-  } catch (error) {
-    console.error('Registrations load error:', error);
-    renderRegistrations([]);
-  }
 }
 
-function renderRegistrations(regs) {
-  const tbody = document.getElementById('regsTbody');
-  
-  if (!tbody) return;
-  
-  if (!regs || regs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--admin-muted);padding:2rem;">No registrations found</td></tr>';
-    return;
-  }
-  
-  tbody.innerHTML = regs.map(r => `
-    <tr class="fade-in">
-      <td><strong>${r.first_name} ${r.last_name}</strong></td>
-      <td><span class="badge badge-${r.school_key}">${r.school_name}</span></td>
-      <td><span class="age-pill">${r.age_group_name || r.age_group_key}</span></td>
-      <td>${r.parent_name}</td>
-      <td style="color:var(--admin-muted); font-size:0.85rem;">${r.parent_email}</td>
-      <td style="color:var(--admin-muted); font-size:0.85rem;">${r.created_at?.split(' ')[0] || r.date}</td>
-      <td>
-        <select class="badge badge-${r.status}" onchange="updateRegStatus(${r.id}, this.value)" 
-                style="border:none; background:transparent; font-weight:800; cursor:pointer; font-size:0.78rem; color:inherit; padding:0.2rem 0.5rem;">
-          <option value="pending" ${r.status==='pending'?'selected':''}>pending</option>
-          <option value="approved" ${r.status==='approved'?'selected':''}>approved</option>
-          <option value="rejected" ${r.status==='rejected'?'selected':''}>rejected</option>
-        </select>
-      </td>
-      <td>
-        <div style="display:flex; gap:0.4rem;">
-          <button class="action-btn edit" onclick="viewRegistration(${r.id})" title="View Details">👁</button>
-          <button class="action-btn" onclick="approveAndCreateUser(${r.id})" title="Approve & Create Login" 
-                  style="background:rgba(74,222,128,0.15); color:#4ADE80;">✓+</button>
-          <button class="action-btn delete" onclick="deleteRegistration(${r.id})" title="Delete">🗑</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-async function updateRegStatus(id, status) {
-  try {
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'update_registration',
-        id: id,
-        status: status
-      })
-    });
+function renderRegistrations(registrations) {
+    const tbody = document.getElementById('regsTbody');
     
-    if (data.success) {
-      showToast(`Registration ${status}!`, status === 'approved' ? 'success' : 'info');
-      loadRegistrations();
-      loadDashboard(); // Refresh stats
-    }
-  } catch (error) {
-    console.error('Update status error:', error);
-  }
-}
-
-async function approveAndCreateUser(regId) {
-  if (!confirm('Approve this registration and create user account?')) return;
-  
-  try {
-    // First, get the registration details
-    const regData = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'list_registrations',
-        school: 'all',
-        status: 'all'
-      })
-    });
-    
-    const reg = regData.registrations.find(r => r.id === regId);
-    if (!reg) {
-      showToast('Registration not found', 'error');
-      return;
+    if (registrations.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--admin-muted);">No registrations found</td></tr>';
+        return;
     }
     
-    // Create username from name
-    const username = (reg.first_name.toLowerCase() + '.' + reg.last_name.toLowerCase()).replace(/\s/g, '');
-    const password = 'student' + reg.id;
+    tbody.innerHTML = registrations.map(reg => `
+        <tr>
+            <td><strong>${reg.first_name} ${reg.last_name}</strong></td>
+            <td>${getSchoolEmoji(reg.school)} ${capitalizeFirst(reg.school)}</td>
+            <td>${capitalizeFirst(reg.age_group)}</td>
+            <td>${reg.parent_name}</td>
+            <td><a href="mailto:${reg.parent_email}">${reg.parent_email}</a></td>
+            <td>${formatDate(reg.created_at)}</td>
+            <td><span class="badge badge-${reg.status}">${capitalizeFirst(reg.status)}</span></td>
+            <td>
+                <div style="display:flex;gap:0.5rem;">
+                    ${reg.status === 'pending' ? `
+                        <button class="action-btn success" onclick="approveRegistration(${reg.id})" title="Approve">✓</button>
+                        <button class="action-btn error" onclick="rejectRegistration(${reg.id})" title="Reject">✗</button>
+                    ` : `
+                        <button class="action-btn" onclick="viewRegistration(${reg.id})" title="View">👁</button>
+                    `}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function approveRegistration(id) {
+    if (!confirm('Approve this registration? This will create a student account.')) return;
     
-    // Create the user
-    const userData = await apiRequest('../php/users.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'create',
-        firstName: reg.first_name,
-        lastName: reg.last_name,
-        username: username,
-        password: password,
-        role: 'student',
-        school: reg.school_key,
-        ageGroup: reg.age_group_key,
-        status: 'active',
-        email: reg.parent_email
-      })
-    });
-    
-    if (userData.success) {
-      // Update registration status to approved
-      await apiRequest('../php/content.php', {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'update_registration',
-          id: regId,
-          status: 'approved'
-        })
-      });
-      
-      showToast(`✅ User created! Login: ${username} / ${password}`, 'success');
-      loadRegistrations();
-      loadDashboard();
+    try {
+        const response = await fetch('php/admin-api.php?action=update_registration_status', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id, status: 'approved'})
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showToast('Registration approved! Student account created.', 'success');
+            loadRegistrations();
+            loadDashboardStats();
+        }
+    } catch (error) {
+        console.error('Error approving registration:', error);
+        showToast('Error approving registration', 'error');
     }
-  } catch (error) {
-    console.error('Create user error:', error);
-  }
 }
 
-async function deleteRegistration(id) {
-  if (!confirm('Delete this registration? This cannot be undone.')) return;
-  
-  try {
-    showToast('Delete functionality: Add to content.php', 'info');
-  } catch (error) {
-    console.error('Delete error:', error);
-  }
-}
-
-function viewRegistration(id) {
-  showToast('View details: Coming soon', 'info');
+async function rejectRegistration(id) {
+    const reason = prompt('Reason for rejection (optional):');
+    if (reason === null) return;
+    
+    try {
+        const response = await fetch('php/admin-api.php?action=update_registration_status', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id, status: 'rejected', notes: reason})
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showToast('Registration rejected', 'success');
+            loadRegistrations();
+            loadDashboardStats();
+        }
+    } catch (error) {
+        console.error('Error rejecting registration:', error);
+        showToast('Error rejecting registration', 'error');
+    }
 }
 
 function filterBySchool(school, btn) {
-  currentSchool = school;
-  document.querySelectorAll('.school-selector-btn').forEach(b => {
-    b.classList.remove('active', 'brightstar', 'moonrise');
-  });
-  if (btn) btn.classList.add('active', school);
-  loadRegistrations();
+    currentSchoolFilter = school;
+    
+    // Update button states
+    document.querySelectorAll('.school-selector-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    
+    loadRegistrations();
 }
 
 function filterRegistrations() {
-  loadRegistrations();
+    loadRegistrations();
 }
 
-// ============ USERS ============
-async function loadUsers() {
-  try {
-    console.log('👥 Loading users...');
-    
-    const data = await apiRequest('../php/users.php?action=list&role=all&school=' + currentSchool);
-    
-    if (data.success && data.users) {
-      console.log('✅ Users loaded:', data.users.length);
-      renderUsers(data.users);
+// ==================== STUDENTS ====================
+async function loadStudents() {
+    try {
+        const response = await fetch('php/admin-api.php?action=get_students');
+        const result = await response.json();
+        
+        if (result.success) {
+            renderStudents(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading students:', error);
     }
-  } catch (error) {
-    console.error('Users load error:', error);
-    renderUsers([]);
-  }
+}
+
+function renderStudents(students) {
+    const tbody = document.getElementById('studentsTbody');
+    
+    if (students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;">No students found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = students.map(student => `
+        <tr>
+            <td><strong>${student.student_id}</strong></td>
+            <td>${student.full_name}</td>
+            <td>${getSchoolEmoji(student.school_key)} ${student.school_name || capitalizeFirst(student.school_key)}</td>
+            <td>${student.class_name || 'N/A'}</td>
+            <td>${student.age_group_name || capitalizeFirst(student.age_group_key)}</td>
+            <td><span class="badge badge-${student.status}">${capitalizeFirst(student.status)}</span></td>
+            <td>
+                <button class="action-btn" onclick="viewStudent(${student.id})" title="View">👁</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ==================== RESULTS ====================
+async function loadResults() {
+    try {
+        const response = await fetch('php/admin-api.php?action=get_results');
+        const result = await response.json();
+        
+        if (result.success) {
+            renderResults(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading results:', error);
+    }
+}
+
+function renderResults(results) {
+    const tbody = document.getElementById('resultsTbody');
+    
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;">No results found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = results.map(result => `
+        <tr>
+            <td>${result.student_name} (${result.student_id})</td>
+            <td>${result.subject_name}</td>
+            <td>${result.session_year} - ${result.term_name}</td>
+            <td>${result.type_name}</td>
+            <td>${result.marks_obtained}/${result.max_marks}</td>
+            <td><strong>${result.grade || 'N/A'}</strong></td>
+            <td><span class="badge badge-${result.is_published ? 'success' : 'warning'}">${result.is_published ? 'Published' : 'Draft'}</span></td>
+            <td>
+                <button class="action-btn" onclick="editResult(${result.id})" title="Edit">✏️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ==================== USERS ====================
+async function loadUsers() {
+    try {
+        const response = await fetch('php/admin-api.php?action=get_users');
+        const result = await response.json();
+        
+        if (result.success) {
+            allUsers = result.data;
+            renderUsers(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
 }
 
 function renderUsers(users) {
-  const tbody = document.getElementById('usersTbody');
-  
-  if (!tbody) return;
-  
-  if (!users || users.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--admin-muted);padding:2rem;">No users found</td></tr>';
-    return;
-  }
-  
-  tbody.innerHTML = users.map(u => `
-    <tr class="fade-in">
-      <td><strong>${u.first_name} ${u.last_name}</strong></td>
-      <td style="color:var(--admin-primary); font-family:monospace;">${u.username}</td>
-      <td>${getRoleLabel(u.role)}</td>
-      <td>${u.school_key === 'both' ? '🏫 Both' : u.school_key === 'brightstar' ? 
-           '<span class="badge badge-brightstar">🦁 BrightStar</span>' : 
-           '<span class="badge badge-moonrise">🦅 Moonrise</span>'}</td>
-      <td>${u.age_group_key ? `<span class="age-pill">${getAgeLabel(u.age_group_key)}</span>` : 
-           '<span style="color:var(--admin-muted);">—</span>'}</td>
-      <td><span class="badge badge-${u.status}">${u.status}</span></td>
-      <td style="color:var(--admin-muted); font-size:0.82rem;">${u.last_login || 'Never'}</td>
-      <td>
-        <div style="display:flex; gap:0.4rem;">
-          <button class="action-btn edit" onclick="openUserModal(${u.id})" title="Edit">✏️</button>
-          <button class="action-btn delete" onclick="deleteUser(${u.id})" title="Delete">🗑</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+    const tbody = document.getElementById('usersTbody');
+    
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;">No users found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td><strong>${user.full_name}</strong></td>
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td><span class="badge badge-${user.role}">${getRoleEmoji(user.role)} ${capitalizeFirst(user.role)}</span></td>
+            <td><span class="badge badge-${user.status}">${capitalizeFirst(user.status)}</span></td>
+            <td>${formatDate(user.created_at)}</td>
+            <td>
+                <div style="display:flex;gap:0.5rem;">
+                    <button class="action-btn" onclick="openUserModal(${user.id})" title="Edit">✏️</button>
+                    <button class="action-btn error" onclick="deleteUser(${user.id})" title="Delete">🗑</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
 }
 
-function openUserModal(id) {
-  const modal = document.getElementById('userModal');
-  const title = document.getElementById('userModalTitle');
-  
-  if (!modal || !title) return;
-  
-  if (id) {
-    // Fetch user data and populate form
-    showToast('Edit user: Fetching data...', 'info');
-    // TODO: Fetch user and populate fields
-  } else {
-    title.textContent = '👤 Add New User';
-    ['uFirstName','uLastName','uUsername','uPassword','uEmail'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-    const roleEl = document.getElementById('uRole');
-    const schoolEl = document.getElementById('uSchool');
-    const ageEl = document.getElementById('uAgeGroup');
-    const statusEl = document.getElementById('uStatus');
-    const editIdEl = document.getElementById('uEditId');
+function openUserModal(userId) {
+    const modal = document.getElementById('userModal');
+    modal.style.display = 'flex';
     
-    if (roleEl) roleEl.value = 'student';
-    if (schoolEl) schoolEl.value = 'brightstar';
-    if (ageEl) ageEl.value = '';
-    if (statusEl) statusEl.value = 'active';
-    if (editIdEl) editIdEl.value = '';
-  }
-  
-  modal.classList.add('open');
+    if (userId) {
+        const user = allUsers.find(u => u.id === userId);
+        if (user) {
+            document.getElementById('userModalTitle').textContent = '✏️ Edit User';
+            document.getElementById('uFirstName').value = user.first_name;
+            document.getElementById('uLastName').value = user.last_name;
+            document.getElementById('uUsername').value = user.username;
+            document.getElementById('uEmail').value = user.email;
+            document.getElementById('uRole').value = user.role;
+            document.getElementById('uStatus').value = user.status;
+            document.getElementById('uEditId').value = user.id;
+            document.getElementById('uPassword').value = '';
+            document.getElementById('uPassword').placeholder = 'Leave blank to keep current';
+        }
+    } else {
+        document.getElementById('userModalTitle').textContent = '👤 Add New User';
+        modal.querySelector('form')?.reset();
+        document.getElementById('uEditId').value = '';
+        document.getElementById('uPassword').placeholder = 'Set password';
+    }
 }
 
 async function saveUser() {
-  const editIdEl = document.getElementById('uEditId');
-  const editId = editIdEl ? editIdEl.value : '';
-  
-  const userData = {
-    action: editId ? 'update' : 'create',
-    firstName: document.getElementById('uFirstName')?.value.trim() || '',
-    lastName: document.getElementById('uLastName')?.value.trim() || '',
-    username: document.getElementById('uUsername')?.value.trim() || '',
-    password: document.getElementById('uPassword')?.value || '',
-    role: document.getElementById('uRole')?.value || 'student',
-    school: document.getElementById('uSchool')?.value || 'brightstar',
-    ageGroup: document.getElementById('uAgeGroup')?.value || '',
-    status: document.getElementById('uStatus')?.value || 'active',
-    email: document.getElementById('uEmail')?.value.trim() || ''
-  };
-  
-  if (!userData.firstName || !userData.username || !userData.password) {
-    showToast('⚠️ Please fill in required fields', 'error');
-    return;
-  }
-  
-  if (editId) userData.id = editId;
-  
-  try {
-    const data = await apiRequest('../php/users.php', {
-      method: 'POST',
-      body: JSON.stringify(userData)
-    });
+    const data = {
+        id: document.getElementById('uEditId').value,
+        first_name: document.getElementById('uFirstName').value,
+        last_name: document.getElementById('uLastName').value,
+        username: document.getElementById('uUsername').value,
+        email: document.getElementById('uEmail').value,
+        role: document.getElementById('uRole').value,
+        status: document.getElementById('uStatus').value,
+        password: document.getElementById('uPassword').value
+    };
     
-    if (data.success) {
-      showToast(`✅ User ${editId ? 'updated' : 'created'}!`, 'success');
-      closeModal('userModal');
-      loadUsers();
+    if (!data.first_name || !data.last_name || !data.username || !data.email) {
+        showToast('Please fill all required fields', 'error');
+        return;
     }
-  } catch (error) {
-    console.error('Save user error:', error);
-  }
+    
+    if (!data.id && !data.password) {
+        showToast('Password is required for new users', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('php/admin-api.php?action=save_user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showToast(result.message, 'success');
+            closeModal('userModal');
+            loadUsers();
+        }
+    } catch (error) {
+        console.error('Error saving user:', error);
+        showToast('Error saving user', 'error');
+    }
 }
 
 async function deleteUser(id) {
-  if (!confirm('Delete this user? This cannot be undone.')) return;
-  
-  try {
-    const data = await apiRequest('../php/users.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'delete',
-        id: id
-      })
-    });
+    if (!confirm('Delete this user? This cannot be undone.')) return;
     
-    if (data.success) {
-      showToast('🗑️ User deleted', 'info');
-      loadUsers();
-    }
-  } catch (error) {
-    console.error('Delete user error:', error);
-  }
-}
-
-// ============ SCHOOLS ============
-async function loadSchools() {
-  try {
-    console.log('🏫 Loading schools...');
-    
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'get_schools' })
-    });
-    
-    if (data.success && data.schools) {
-      data.schools.forEach(s => {
-        const prefix = s.school_key === 'brightstar' ? 'bs' : 'mr';
-        const nameEl = document.getElementById(`${prefix}-name-display`);
-        const mottoEl = document.getElementById(`${prefix}-motto-display`);
-        const descEl = document.getElementById(`${prefix}-desc-display`);
-        const featEl = document.getElementById(`${prefix}-features-display`);
+    try {
+        const response = await fetch(`php/admin-api.php?action=delete_user&id=${id}`);
+        const result = await response.json();
         
-        if (nameEl) nameEl.textContent = s.name;
-        if (mottoEl) mottoEl.textContent = s.motto;
-        if (descEl) descEl.textContent = s.description;
-        
-        if (featEl) {
-          const features = typeof s.features === 'string' ? JSON.parse(s.features) : s.features;
-          featEl.innerHTML = features.map(f => 
-            `<span class="badge" style="background:rgba(255,255,255,0.07); color:var(--admin-text); font-weight:600;">${f}</span>`
-          ).join('');
+        if (result.success) {
+            showToast('User deleted', 'success');
+            loadUsers();
         }
-      });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showToast('Error deleting user', 'error');
     }
-  } catch (error) {
-    console.error('Schools load error:', error);
-  }
 }
 
-function openSchoolEdit(key) {
-  showToast('Loading school data...', 'info');
-  const editKeyEl = document.getElementById('editSchoolKey');
-  if (editKeyEl) editKeyEl.value = key;
-  
-  const modal = document.getElementById('schoolModal');
-  if (modal) modal.classList.add('open');
+// ==================== SCHOOLS ====================
+async function loadSchools() {
+    try {
+        const response = await fetch('php/admin-api.php?action=get_schools');
+        const result = await response.json();
+        
+        if (result.success) {
+            renderSchoolsPage(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading schools:', error);
+    }
 }
 
-async function saveSchool() {
-  const keyEl = document.getElementById('editSchoolKey');
-  const key = keyEl ? keyEl.value : '';
-  
-  const schoolData = {
-    action: 'update_school',
-    key: key,
-    data: {
-      name: document.getElementById('sName')?.value || '',
-      motto: document.getElementById('sMotto')?.value || '',
-      desc: document.getElementById('sDesc')?.value || '',
-      features: (document.getElementById('sFeatures')?.value || '').split('\n').filter(Boolean)
-    }
-  };
-  
-  try {
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify(schoolData)
-    });
+function renderSchoolsPage(schools) {
+    const container = document.getElementById('schoolsContainer');
     
-    if (data.success) {
-      showToast('✅ School updated!', 'success');
-      closeModal('schoolModal');
-      loadSchools();
-    }
-  } catch (error) {
-    console.error('Save school error:', error);
-  }
+    container.innerHTML = schools.map(school => {
+        const emoji = school.school_key === 'brightstar' ? '🦁' : '🦅';
+        const badgeClass = school.school_key === 'brightstar' ? 'badge-brightstar' : 'badge-moonrise';
+        const borderColor = school.school_key === 'brightstar' ? 'rgba(107,203,247,0.3)' : 'rgba(20,184,166,0.3)';
+        
+        return `
+            <div class="chart-card" style="border:1px solid ${borderColor};">
+                <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+                    <span style="font-size:3rem;">${emoji}</span>
+                    <div>
+                        <h3 style="font-family:var(--font-title);">${school.name}</h3>
+                        <span class="badge ${badgeClass}">${school.school_key}</span>
+                    </div>
+                    <button class="btn-save" style="margin-left:auto;" onclick="openSchoolEdit('${school.school_key}')">✏️ Edit</button>
+                </div>
+                <div class="admin-form-group">
+                    <div class="admin-form-label">Motto</div>
+                    <div style="color:var(--admin-muted); font-style:italic;">${school.motto || 'No motto set'}</div>
+                </div>
+                <div class="admin-form-group" style="margin-top:1rem;">
+                    <div class="admin-form-label">Description</div>
+                    <div style="color:var(--admin-muted); font-size:0.9rem; line-height:1.6;">${school.description || 'No description'}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
-// ============ AGE GROUPS ============
+// ==================== AGE GROUPS ====================
 async function loadAgeGroups() {
-  try {
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'get_age_groups' })
-    });
-    
-    if (data.success && data.ageGroups) {
-      renderAgeGroups(data.ageGroups);
+    try {
+        const response = await fetch('php/admin-api.php?action=get_age_groups');
+        const result = await response.json();
+        
+        if (result.success) {
+            renderAgeGroups(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading age groups:', error);
     }
-  } catch (error) {
-    console.error('Age groups load error:', error);
-  }
 }
 
 function renderAgeGroups(groups) {
-  const tbody = document.getElementById('ageTbody');
-  
-  if (!tbody) return;
-  
-  tbody.innerHTML = groups.map(g => `
-    <tr class="fade-in">
-      <td style="font-size:1.5rem;">${g.icon}</td>
-      <td><strong>${g.name}</strong></td>
-      <td><span class="age-pill">${g.min_age}–${g.max_age}</span></td>
-      <td style="color:var(--admin-muted);">${g.level_label}</td>
-      <td style="color:var(--admin-muted); font-size:0.85rem; max-width:200px;">${g.description}</td>
-      <td><strong>${g.students || 0}</strong></td>
-      <td>
-        <div style="display:flex; gap:0.4rem;">
-          <button class="action-btn edit" onclick="openAgeModal(${g.id})" title="Edit">✏️</button>
-          <button class="action-btn delete" onclick="deleteAgeGroup(${g.id})" title="Delete">🗑</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function openAgeModal(id) {
-  showToast('Age group edit: Coming soon', 'info');
-  const modal = document.getElementById('ageModal');
-  if (modal) modal.classList.add('open');
-}
-
-function saveAgeGroup() {
-  showToast('Age group save: Coming soon', 'info');
-}
-
-function deleteAgeGroup(id) {
-  showToast('Age group delete: Coming soon', 'info');
-}
-
-// ============ ANNOUNCEMENTS ============
-async function loadAnnouncements() {
-  try {
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        action: 'get_announcements',
-        school: 'all'
-      })
-    });
+    const tbody = document.getElementById('ageTbody');
     
-    if (data.success && data.announcements) {
-      renderAnnouncements(data.announcements);
+    tbody.innerHTML = groups.map(group => `
+        <tr>
+            <td style="font-size:2rem;">${group.icon || '📚'}</td>
+            <td><strong>${group.name}</strong></td>
+            <td>${group.min_age} - ${group.max_age} years</td>
+            <td>${group.level_label || 'N/A'}</td>
+            <td>${group.description || 'No description'}</td>
+            <td><span class="badge badge-${group.is_active ? 'success' : 'inactive'}">${group.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td>
+                <button class="action-btn" onclick="openAgeModal(${group.id})" title="Edit">✏️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ==================== ANNOUNCEMENTS ====================
+async function loadAnnouncements() {
+    try {
+        const response = await fetch('php/admin-api.php?action=get_announcements');
+        const result = await response.json();
+        
+        if (result.success) {
+            renderAnnouncements(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading announcements:', error);
     }
-  } catch (error) {
-    console.error('Announcements load error:', error);
-  }
 }
 
 function renderAnnouncements(announcements) {
-  const list = document.getElementById('annList');
-  
-  if (!list) return;
-  
-  if (!announcements || announcements.length === 0) {
-    list.innerHTML = '<div style="color:var(--admin-muted); text-align:center; padding:2rem;">No announcements yet</div>';
-    return;
-  }
-  
-  list.innerHTML = announcements.map(a => `
-    <div class="chart-card fade-in" style="padding:1rem; border:1px solid var(--admin-border);">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
-        <div>
-          <div style="font-weight:800; margin-bottom:0.3rem;">${a.title}</div>
-          <div style="font-size:0.85rem; color:var(--admin-muted); margin-bottom:0.5rem;">${a.body}</div>
-          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <span class="badge badge-active">${a.target}</span>
-            <span class="badge badge-${a.priority === 'urgent' ? 'pending' : 'active'}">${a.priority}</span>
-            <span style="font-size:0.75rem; color:var(--admin-muted);">${a.posted_at?.split(' ')[0]}</span>
-          </div>
+    const container = document.getElementById('annList');
+    
+    if (announcements.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--admin-muted);">No announcements yet</div>';
+        return;
+    }
+    
+    container.innerHTML = announcements.map(ann => `
+        <div class="announcement-item" style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                <strong>${ann.title}</strong>
+                <button class="action-btn error" onclick="deleteAnnouncement(${ann.id})" title="Delete">🗑</button>
+            </div>
+            <p style="font-size:0.9rem; color:var(--admin-muted); margin:0.5rem 0;">${ann.content}</p>
+            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                ${ann.school_key ? `<span class="badge">${getSchoolEmoji(ann.school_key)} ${capitalizeFirst(ann.school_key)}</span>` : '<span class="badge">📢 All Schools</span>'}
+                <span class="badge badge-${ann.priority}">${capitalizeFirst(ann.priority)}</span>
+            </div>
         </div>
-        <button class="action-btn delete" onclick="deleteAnnouncement(${a.id})">🗑</button>
-      </div>
-    </div>
-  `).join('');
+    `).join('');
 }
 
 async function postAnnouncement() {
-  const titleEl = document.getElementById('annTitle');
-  const bodyEl = document.getElementById('annBody');
-  const schoolEl = document.getElementById('annSchool');
-  const priorityEl = document.getElementById('annPriority');
-  
-  const title = titleEl ? titleEl.value.trim() : '';
-  const body = bodyEl ? bodyEl.value.trim() : '';
-  const school = schoolEl ? schoolEl.value : 'all';
-  const priority = priorityEl ? priorityEl.value : 'info';
-  
-  if (!title || !body) {
-    showToast('⚠️ Title and message required', 'error');
-    return;
-  }
-  
-  try {
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'post_announcement',
-        title,
-        body,
-        school,
-        priority
-      })
-    });
+    const data = {
+        title: document.getElementById('annTitle').value,
+        content: document.getElementById('annBody').value,
+        school_key: document.getElementById('annSchool').value,
+        priority: document.getElementById('annPriority').value
+    };
     
-    if (data.success) {
-      if (titleEl) titleEl.value = '';
-      if (bodyEl) bodyEl.value = '';
-      showToast('📢 Announcement posted!', 'success');
-      loadAnnouncements();
+    if (!data.title || !data.content) {
+        showToast('Please fill title and message', 'error');
+        return;
     }
-  } catch (error) {
-    console.error('Post announcement error:', error);
-  }
+    
+    try {
+        const response = await fetch('php/admin-api.php?action=post_announcement', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showToast('Announcement posted!', 'success');
+            document.getElementById('annTitle').value = '';
+            document.getElementById('annBody').value = '';
+            loadAnnouncements();
+        }
+    } catch (error) {
+        console.error('Error posting announcement:', error);
+        showToast('Error posting announcement', 'error');
+    }
 }
 
 async function deleteAnnouncement(id) {
-  if (!confirm('Delete this announcement?')) return;
-  
-  try {
-    const data = await apiRequest('../php/content.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'delete_announcement',
-        id
-      })
-    });
+    if (!confirm('Delete this announcement?')) return;
     
-    if (data.success) {
-      showToast('🗑️ Announcement deleted', 'info');
-      loadAnnouncements();
+    try {
+        const response = await fetch(`php/admin-api.php?action=delete_announcement&id=${id}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Announcement deleted', 'success');
+            loadAnnouncements();
+        }
+    } catch (error) {
+        console.error('Error deleting announcement:', error);
     }
-  } catch (error) {
-    console.error('Delete announcement error:', error);
-  }
 }
 
-// ============ SETTINGS ============
-async function loadSettings() {
-  try {
-    const data = await apiRequest('../php/settings.php', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'get_settings' })
-    });
+// ==================== SETTINGS ====================
+async function changePassword() {
+    const current = document.getElementById('curPass').value;
+    const newPass = document.getElementById('newPass').value;
+    const confirm = document.getElementById('confPass').value;
     
-    if (data.success && data.settings) {
-      const nameEl = document.getElementById('portalName');
-      const regEl = document.getElementById('regOpen');
-      const emailEl = document.getElementById('adminEmail');
-      
-      if (nameEl) nameEl.value = data.settings.portal_name || '';
-      if (regEl) regEl.value = data.settings.registration_open || '1';
-      if (emailEl) emailEl.value = data.settings.admin_email || '';
+    if (!current || !newPass || !confirm) {
+        showToast('Please fill all password fields', 'error');
+        return;
     }
-  } catch (error) {
-    console.error('Settings load error:', error);
-  }
+    
+    if (newPass !== confirm) {
+        showToast('New passwords do not match', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('php/admin-api.php?action=change_password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({current_password: current, new_password: newPass})
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showToast('Password updated!', 'success');
+            document.getElementById('curPass').value = '';
+            document.getElementById('newPass').value = '';
+            document.getElementById('confPass').value = '';
+        } else {
+            showToast(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showToast('Error changing password', 'error');
+    }
 }
 
 async function saveSettings() {
-  try {
-    const data = await apiRequest('../php/settings.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'save_settings',
-        portalName: document.getElementById('portalName')?.value || '',
-        regOpen: document.getElementById('regOpen')?.value || '1',
-        adminEmail: document.getElementById('adminEmail')?.value || ''
-      })
-    });
+    const data = {
+        site_name: document.getElementById('portalName').value,
+        site_email: document.getElementById('adminEmail').value,
+        enrollment_open: document.getElementById('regOpen').value
+    };
     
-    if (data.success) {
-      showToast('✅ Settings saved!', 'success');
+    try {
+        const response = await fetch('php/admin-api.php?action=update_settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showToast('Settings saved!', 'success');
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showToast('Error saving settings', 'error');
     }
-  } catch (error) {
-    console.error('Save settings error:', error);
-  }
 }
 
-async function changePassword() {
-  const currentEl = document.getElementById('curPass');
-  const newEl = document.getElementById('newPass');
-  const confirmEl = document.getElementById('confPass');
-  
-  const current = currentEl ? currentEl.value : '';
-  const newPass = newEl ? newEl.value : '';
-  const confirm = confirmEl ? confirmEl.value : '';
-  
-  if (!current || !newPass) {
-    showToast('⚠️ Fill in all password fields', 'error');
-    return;
-  }
-  
-  if (newPass !== confirm) {
-    showToast('⚠️ Passwords do not match', 'error');
-    return;
-  }
-  
-  if (newPass.length < 6) {
-    showToast('⚠️ Password must be at least 6 characters', 'error');
-    return;
-  }
-  
-  try {
-    const data = await apiRequest('../php/auth.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'change_password',
-        current,
-        new: newPass
-      })
+// ==================== UTILITY FUNCTIONS ====================
+function animateCounters() {
+    document.querySelectorAll('.counter').forEach(counter => {
+        const target = parseInt(counter.getAttribute('data-target') || counter.textContent);
+        const duration = 1500;
+        const increment = target / (duration / 16);
+        let current = 0;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                counter.textContent = target;
+                clearInterval(timer);
+            } else {
+                counter.textContent = Math.floor(current);
+            }
+        }, 16);
     });
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
     
-    if (data.success) {
-      ['curPass','newPass','confPass'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-      showToast('🔐 Password changed successfully!', 'success');
-    }
-  } catch (error) {
-    console.error('Change password error:', error);
-  }
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
-// ============ SEARCH ============
-function handleSearch(value) {
-  const searchTerm = value ? value.toLowerCase().trim() : '';
-  console.log('🔍 Searching for:', searchTerm);
-  
-  // For now, just show a message
-  if (searchTerm) {
-    showToast(`Searching for "${searchTerm}"...`, 'info');
-  }
-  
-  // TODO: Implement actual search functionality
-  // You can add search to users, registrations, etc.
-}
-
-// ============ HELPERS ============
-function getAgeLabel(key) {
-  const labels = { 
-    tiny:'🌱 Tiny (3-5)', 
-    junior:'🌿 Junior (6-8)', 
-    discover:'🌳 Discover (9-11)', 
-    pioneer:'🚀 Pioneer (12-14)', 
-    champion:'🏆 Champion (15-18)' 
-  };
-  return labels[key] || key || '—';
-}
-
-function getRoleLabel(role) {
-  const labels = { 
-    student:'🎒 Student', 
-    parent:'👨‍👩‍👧 Parent', 
-    teacher:'👩‍🏫 Teacher', 
-    admin:'🔑 Admin' 
-  };
-  return labels[role] || role;
-}
-
-// ============ MODAL HELPERS ============
-function closeModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.classList.remove('open');
-}
-
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.classList.remove('open');
-  });
-});
-
-// ============ TOAST ============
-function showToast(msg, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
-  
-  const icons = { success:'✅', error:'❌', info:'ℹ️' };
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.innerHTML = `
-    <span class="toast-icon">${icons[type]||'💬'}</span>
-    <span>${msg}</span>
-    <span class="toast-close" onclick="this.parentElement.remove()">✕</span>
-  `;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
-}
-
-// ============ SCHOOL SWITCHER ============
-function openSchoolModal() {
-  const modal = document.getElementById('schoolSwitchModal');
-  if (modal) modal.classList.add('open');
-}
-
-function switchActiveSchool(school) {
-  currentSchool = school;
-  const labels = { 
-    brightstar:'🦁 BrightStar Academy', 
-    moonrise:'🦅 Moonrise Institute', 
-    all:'🏫 All Schools' 
-  };
-  const labelEl = document.getElementById('activeSchoolLabel');
-  if (labelEl) labelEl.textContent = labels[school];
-  
-  closeModal('schoolSwitchModal');
-  loadUsers();
-  showToast(`Switched to ${labels[school]}`, 'info');
-}
-
-// ============ LOGOUT ============
 function handleLogout() {
-  if (confirm('Logout from admin panel?')) {
-    fetch('../php/auth.php', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action: 'logout'})
-    })
-    .then(() => {
-      window.location.href = '../login.html';
-    })
-    .catch(() => {
-      window.location.href = '../login.html';
-    });
-  }
+    if (confirm('Logout from admin panel?')) {
+        window.location.href = 'php/logout.php';
+    }
 }
 
-// ============ SIDEBAR TOGGLE (MOBILE) ============
-function toggleSidebar() {
-  const sidebar = document.getElementById('adminSidebar');
-  if (sidebar) sidebar.classList.toggle('open');
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric'});
 }
 
-function checkMobile() {
-  const isMobile = window.innerWidth <= 900;
-  const toggleBtn = document.getElementById('sidebarToggle');
-  if (toggleBtn) toggleBtn.style.display = isMobile ? 'flex' : 'none';
+function capitalizeFirst(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// ============ INIT ============
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('✅ Admin panel loaded - Production mode with backend connection');
-  loadDashboard();
-  checkMobile();
-  window.addEventListener('resize', checkMobile);
-});
+function getSchoolEmoji(schoolKey) {
+    return schoolKey === 'brightstar' ? '🦁' : schoolKey === 'moonrise' ? '🦅' : '🏫';
+}
+
+function getRoleEmoji(role) {
+    const emojis = {
+        'admin': '🔑',
+        'teacher': '👨‍🏫',
+        'student': '🎒',
+        'parent': '👨‍👩‍👧'
+    };
+    return emojis[role] || '👤';
+}
+
+// Placeholder functions
+function toggleSidebar() { }
+function openSchoolModal() { }
+function handleSearch(query) { console.log('Searching:', query); }
+function exportRegistrations() { showToast('Export feature coming soon', 'info'); }
+function exportStudents() { showToast('Export feature coming soon', 'info'); }
+function viewRegistration(id) { showToast('View details coming soon', 'info'); }
+function viewStudent(id) { showToast('Student details coming soon', 'info'); }
+function editResult(id) { showToast('Edit result coming soon', 'info'); }
+function openResultModal() { showToast('Upload result modal coming soon', 'info'); }
+function openSchoolEdit(key) { showToast('School edit modal coming soon', 'info'); }
+function openAgeModal(id) { showToast('Age group edit modal coming soon', 'info'); }
+function loadSessions() { showToast('Sessions management coming soon', 'info'); }
+function loadSubjects() { showToast('Subjects management coming soon', 'info'); }
