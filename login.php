@@ -1,3 +1,26 @@
+<?php
+/* ============================================
+   LOGIN PAGE - PHP Version
+   Professional login with database validation
+   ============================================ */
+
+session_start();
+
+// If already logged in, redirect to appropriate dashboard
+if (isset($_SESSION['user_id'])) {
+    $role = $_SESSION['role'];
+    if ($role === 'admin') {
+        header('Location: admin.php');
+    } elseif ($role === 'student') {
+        header('Location: student-dashboard.php');
+    } elseif ($role === 'teacher') {
+        header('Location: teacher-dashboard.php');
+    } else {
+        header('Location: index.php');
+    }
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,17 +56,14 @@
     .preview-school {
       display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
       opacity: 0.5; transition: opacity 0.3s, transform 0.3s; cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 12px;
+      padding: 0.5rem; border-radius: 12px;
     }
     .preview-school.active { 
-      opacity: 1; 
-      transform: scale(1.1);
+      opacity: 1; transform: scale(1.1);
       background: rgba(255,255,255,0.05);
     }
     .preview-school:hover:not(.active) { 
-      opacity: 0.7; 
-      transform: scale(1.05);
+      opacity: 0.7; transform: scale(1.05);
     }
     .preview-school .preview-emoji { font-size: 2.5rem; }
     .preview-school .preview-name { font-size: 0.75rem; font-weight: 700; }
@@ -61,32 +81,22 @@
     }
     .role-btn:hover:not(.active) { border-color:rgba(255,255,255,0.2); color:var(--text-light); }
     
-    /* Alert styles */
     .alert {
-      padding: 1rem;
-      border-radius: 12px;
-      margin-bottom: 1.5rem;
-      display: none;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.9rem;
-      font-weight: 600;
+      padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: none;
+      align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 600;
       animation: slideDown 0.3s ease-out;
     }
     .alert.visible { display: flex; }
     .alert-error {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
       color: #FCA5A5;
     }
     .alert-success {
-      background: rgba(34, 197, 94, 0.1);
-      border: 1px solid rgba(34, 197, 94, 0.3);
+      background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3);
       color: #86EFAC;
     }
     .alert-warning {
-      background: rgba(251, 191, 36, 0.1);
-      border: 1px solid rgba(251, 191, 36, 0.3);
+      background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3);
       color: #FCD34D;
     }
     @keyframes slideDown {
@@ -100,29 +110,19 @@
     }
     .shake { animation: shake 0.5s; }
     
-    /* Loading overlay */
     .loading-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 14, 46, 0.9);
-      backdrop-filter: blur(5px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
+      position: fixed; inset: 0;
+      background: rgba(15, 14, 46, 0.9); backdrop-filter: blur(5px);
+      display: none; align-items: center; justify-content: center; z-index: 9999;
     }
     .loading-overlay.visible { display: flex; }
     .loading-spinner {
-      width: 60px;
-      height: 60px;
+      width: 60px; height: 60px;
       border: 4px solid rgba(107, 203, 247, 0.2);
-      border-top-color: var(--sky);
-      border-radius: 50%;
+      border-top-color: var(--sky); border-radius: 50%;
       animation: spin 1s linear infinite;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="login-body">
@@ -136,7 +136,6 @@
 
   <a href="index.php" class="back-link">← Back to Home</a>
 
-  <!-- Loading overlay -->
   <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-spinner"></div>
   </div>
@@ -149,7 +148,6 @@
         <p class="login-sub">Sign in to your EduVerse portal</p>
       </div>
 
-      <!-- Alert messages -->
       <div class="alert alert-error" id="alertError">
         <span>❌</span>
         <span id="alertErrorText">An error occurred</span>
@@ -163,7 +161,6 @@
         <span id="alertWarningText">Warning</span>
       </div>
 
-      <!-- School selector -->
       <div class="login-school-preview">
         <div class="preview-school active" data-school="brightstar" onclick="selectSchool('brightstar')">
           <span class="preview-emoji">🦁</span>
@@ -179,7 +176,6 @@
         </div>
       </div>
 
-      <!-- Role selector -->
       <div class="role-selector">
         <button type="button" class="role-btn active" data-role="student" onclick="selectRole('student')">
           <span class="role-icon">🎒</span>Student
@@ -192,7 +188,6 @@
         </button>
       </div>
 
-      <!-- Login form -->
       <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
         <div class="form-group">
           <label class="form-label" for="username">Username / Student ID</label>
@@ -228,7 +223,6 @@
           <span class="error-msg" id="passError">Please enter your password</span>
         </div>
 
-        <!-- Hidden school & role fields -->
         <input type="hidden" id="schoolField" name="school" value="brightstar">
         <input type="hidden" id="roleField" name="role" value="student">
 
@@ -258,26 +252,18 @@
   </div>
 
   <script>
-    // ============================================
-    // EDUVERSE LOGIN - CORRECTED VERSION
-    // Fixed redirect paths for actual file structure
-    // ============================================
-
     'use strict';
 
-    // State management
     let selectedSchool = 'brightstar';
     let selectedRole = 'student';
     let loginAttempts = 0;
     const MAX_ATTEMPTS = 5;
 
-    // ============ INITIALIZATION ============
     document.addEventListener('DOMContentLoaded', function() {
       console.log('✅ Login page loaded');
       loadRememberedUsername();
     });
 
-    // ============ SCHOOL SELECTION ============
     function selectSchool(school) {
       selectedSchool = school;
       document.getElementById('schoolField').value = school;
@@ -292,7 +278,6 @@
       console.log('🏫 Selected school:', school);
     }
 
-    // ============ ROLE SELECTION ============
     function selectRole(role) {
       selectedRole = role;
       document.getElementById('roleField').value = role;
@@ -304,7 +289,6 @@
       console.log('👤 Selected role:', role);
     }
 
-    // ============ PASSWORD TOGGLE ============
     function togglePassword() {
       const passwordInput = document.getElementById('password');
       const icon = event.target;
@@ -318,7 +302,6 @@
       }
     }
 
-    // ============ REMEMBER ME ============
     function loadRememberedUsername() {
       const remembered = localStorage.getItem('eduverse_username');
       const rememberCheckbox = document.getElementById('rememberMe');
@@ -339,7 +322,6 @@
       }
     }
 
-    // ============ ALERT FUNCTIONS ============
     function showAlert(type, message) {
       hideAllAlerts();
       
@@ -369,7 +351,6 @@
       return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
-    // ============ LOADING STATE ============
     function setLoading(isLoading) {
       const btn = document.getElementById('loginBtn');
       const btnText = document.getElementById('loginBtnText');
@@ -386,7 +367,6 @@
       }
     }
 
-    // ============ VALIDATION ============
     function validateForm() {
       hideAllAlerts();
       
@@ -412,7 +392,6 @@
       return isValid;
     }
 
-    // ============ LOGIN HANDLER ============
     async function handleLogin(event) {
       event.preventDefault();
       
@@ -482,13 +461,11 @@
       }
     }
 
-    // ============ REDIRECT LOGIC - FIXED ============
     function redirectToDashboard(role, school) {
       console.log('🔀 Redirecting. Role:', role, 'School:', school);
       
-      // Redirect to actual file locations
       if (role === 'admin') {
-        window.location.href = 'admin/index.html';
+        window.location.href = 'admin.php';
       } else if (role === 'student') {
         window.location.href = 'student-dashboard.php';
       } else if (role === 'teacher') {
@@ -499,7 +476,6 @@
       }
     }
 
-    // ============ ANIMATIONS ============
     function shakeCard() {
       const card = document.getElementById('loginCard');
       card.classList.add('shake');
@@ -508,7 +484,6 @@
       }, 500);
     }
 
-    // ============ FORGOT PASSWORD ============
     function showForgotPassword() {
       showAlert('warning', 'Please contact your school administrator to reset your password.');
     }
