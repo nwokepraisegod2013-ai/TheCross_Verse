@@ -1,11 +1,12 @@
 <?php
 /* ============================================
    EDUVERSE PORTAL – DATABASE CONFIG
+   Fixed version - no early headers
    ============================================ */
 
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');         // Change to your DB user
-define('DB_PASS', '');             // Change to your DB password
+define('DB_USER', 'root');
+define('DB_PASS', '');
 define('DB_NAME', 'eduverse_db');
 define('DB_CHARSET', 'utf8mb4');
 
@@ -22,6 +23,7 @@ function getDB(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
+            error_log("Database connection failed: " . $e->getMessage());
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Database connection failed']);
             exit;
@@ -44,12 +46,4 @@ function getRequestBody(): array {
     $data = json_decode($raw, true);
     return $data ?? [];
 }
-
-// CORS headers for development
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+?>

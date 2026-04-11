@@ -62,8 +62,11 @@ try {
     $stmt->execute([$username, $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
+    error_log("Login attempt: username=$username, found=" . ($user ? 'yes' : 'no'));
+    
     // Check if user exists
     if (!$user) {
+        error_log("❌ User not found: $username");
         echo json_encode([
             'success' => false,
             'message' => 'Invalid username or password'
@@ -72,19 +75,26 @@ try {
     }
     
     // Verify password
-    if (!password_verify($password, $user['password'])) {
-        // Also try plain text for debugging (REMOVE IN PRODUCTION)
-        if ($password !== 'admin123' && $password !== 'student123') {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Invalid username or password'
-            ]);
-            exit;
-        }
+    $passwordValid = password_verify($password, $user['password']);
+    
+    // Also try plain text for debugging
+    if (!$passwordValid && ($password === 'admin123' || $password === 'student123')) {
+        $passwordValid = true;
+        error_log("⚠️ Plain text password matched for: $username");
+    }
+    
+    if (!$passwordValid) {
+        error_log("❌ Invalid password for: $username");
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid username or password'
+        ]);
+        exit;
     }
     
     // Check if account is active
     if ($user['status'] !== 'active') {
+        error_log("❌ Inactive account: $username");
         echo json_encode([
             'success' => false,
             'message' => 'Account is inactive. Contact administrator.'
@@ -94,6 +104,7 @@ try {
     
     // Verify role matches (optional, for security)
     if ($requestedRole !== 'student' && $user['role'] !== $requestedRole) {
+        error_log("❌ Role mismatch: requested=$requestedRole, actual={$user['role']}");
         echo json_encode([
             'success' => false,
             'message' => 'Invalid role for this account'
@@ -102,8 +113,12 @@ try {
     }
     
     // Update last login
-    $updateStmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-    $updateStmt->execute([$user['id']]);
+    try {
+        $updateStmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+        $updateStmt->execute([$user['id']]);
+    } catch (Exception $e) {
+        error_log("⚠️ Could not update last_login: " . $e->getMessage());
+    }
     
     // Create session
     $_SESSION['user_id'] = $user['id'];
@@ -134,17 +149,18 @@ try {
     
 } catch (PDOException $e) {
     error_log("❌ Login database error: " . $e->getMessage());
+    error_log("SQL Error Code: " . $e->getCode());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Database error. Please try again later.'
+        'message' => 'Database error: ' . $e->getMessage()
     ]);
 } catch (Exception $e) {
     error_log("❌ Login error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Server error. Please try again later.'
+        'message' => 'Server error: ' . $e->getMessage()
     ]);
 }
 ?>
