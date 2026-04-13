@@ -4,6 +4,20 @@
    Pulls schools & age groups from database
    ============================================ */
 
+session_start();
+
+// Redirect if already logged in
+if (isset($_SESSION['user_id'])) {
+    $role = $_SESSION['role'];
+    if ($role === 'admin') {
+        header('Location: admin.php');
+        exit;
+    } elseif ($role === 'student') {
+        header('Location: student-dashboard.php');
+        exit;
+    }
+}
+
 require_once __DIR__ . '/php/config.php';
 
 // Fetch data from database
@@ -15,7 +29,7 @@ try {
     $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get age groups
-    $stmt = $db->query("SELECT * FROM age_groups ORDER BY min_age");
+    $stmt = $db->query("SELECT * FROM age_groups WHERE is_active = 1 ORDER BY min_age");
     $ageGroups = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get settings
@@ -119,7 +133,7 @@ if ($preselectedSchool) {
       <span class="brand-icon spin-slow">🎓</span>
       <span class="brand-text"><?php echo htmlspecialchars($settings['portal_name'] ?? 'EduVerse'); ?></span>
     </a>
-    <a href="login.html" class="nav-btn btn-login">Already have an account? Login →</a>
+    <a href="login.php" class="nav-btn btn-login">Already have an account? Login →</a>
   </nav>
 
   <div class="register-container">
@@ -208,7 +222,7 @@ if ($preselectedSchool) {
           <select id="ageGroup" class="form-select" required onchange="updateAgeInfo()">
             <option value="">Select your age group</option>
             <?php foreach ($ageGroups as $group): ?>
-            <option value="<?php echo $group['id']; ?>" data-description="<?php echo htmlspecialchars($group['description']); ?>">
+            <option value="<?php echo $group['id']; ?>" data-group-key="<?php echo htmlspecialchars($group['group_key']); ?>" data-description="<?php echo htmlspecialchars($group['description'] ?? ''); ?>">
               <?php echo ($group['icon'] ?? '📚') . ' ' . htmlspecialchars($group['name']) . ' (' . $group['group_key'] . ') – ' . ($group['level_label'] ?? ''); ?>
             </option>
             <?php endforeach; ?>
@@ -288,7 +302,7 @@ if ($preselectedSchool) {
       </div>
       <div style="display:flex;flex-direction:column;gap:0.8rem;">
         <a href="index.php" class="btn btn-primary" style="justify-content:center;">🏠 Home</a>
-        <a href="login.html" class="btn btn-secondary" style="justify-content:center;">🔑 Login</a>
+        <a href="login.php" class="btn btn-secondary" style="justify-content:center;">🔑 Login</a>
       </div>
     </div>
   </div>
@@ -492,11 +506,12 @@ if ($preselectedSchool) {
     // Get selected age group details
     const ageGroupSelect = document.getElementById('ageGroup');
     const selectedAgeGroupId = ageGroupSelect.value;
-    const selectedAgeGroup = ageGroupsData.find(ag => ag.id == selectedAgeGroupId);
+    const selectedOption = ageGroupSelect.options[ageGroupSelect.selectedIndex];
+    const selectedAgeGroupKey = selectedOption?.dataset.groupKey || 'unknown';
     
     const d = {
-      school: selectedSchool.school_key,  // PHP expects 'school' as key (brightstar/moonrise)
-      ageGroup: selectedAgeGroup?.group_key || 'unknown',  // PHP expects 'ageGroup' as key
+      school: selectedSchool.school_key,
+      ageGroup: selectedAgeGroupKey,
       firstName: document.getElementById('firstName').value.trim(),
       lastName: document.getElementById('lastName').value.trim(),
       dob: document.getElementById('dob').value,

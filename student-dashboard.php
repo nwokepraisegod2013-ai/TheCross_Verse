@@ -9,7 +9,7 @@ require_once __DIR__ . '/php/config.php';
 
 // Check if student is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
-    header('Location: login.html');
+    header('Location: login.php');
     exit;
 }
 
