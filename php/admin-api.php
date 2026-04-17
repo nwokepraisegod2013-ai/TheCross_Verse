@@ -415,4 +415,3 @@ try {
     error_log("Admin API Error: " . $e->getMessage());
     jsonResponse(['success' => false, 'message' => 'Server error'], 500);
 }
-?>

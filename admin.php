@@ -1,7 +1,8 @@
 <?php
 /* ============================================
    ADMIN PANEL - Main Dashboard
-   Dynamic PHP version with database integration
+   UPDATED: SaaS Platform Management
+   Multi-tenant school management system
    ============================================ */
 
 session_start();
@@ -32,7 +33,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Panel – EduVerse Portal</title>
+  <title>Admin Panel – EduVerse Portal Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/admin.css">
@@ -76,6 +77,27 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
           <span class="nav-icon">👥</span> Users
         </div>
 
+        <div class="nav-section-title">🚀 SaaS Platform</div>
+        <div class="nav-item" onclick="showPage('school-approvals')" id="nav-school-approvals">
+          <span class="nav-icon">🏫</span> School Approvals
+          <span class="nav-badge" id="schoolApprovalsBadge">0</span>
+        </div>
+        <div class="nav-item" onclick="showPage('subscriptions')" id="nav-subscriptions">
+          <span class="nav-icon">💳</span> Subscriptions
+        </div>
+        <div class="nav-item" onclick="showPage('hosting-plans')" id="nav-hosting-plans">
+          <span class="nav-icon">💰</span> Hosting Plans
+        </div>
+        <div class="nav-item" onclick="showPage('payments')" id="nav-payments">
+          <span class="nav-icon">💵</span> Payments
+        </div>
+        <div class="nav-item" onclick="showPage('platform-news')" id="nav-platform-news">
+          <span class="nav-icon">📰</span> Platform News
+        </div>
+        <div class="nav-item" onclick="showPage('advertisements')" id="nav-advertisements">
+          <span class="nav-icon">📢</span> Advertisements
+        </div>
+
         <div class="nav-section-title">Academic</div>
         <div class="nav-item" onclick="showPage('sessions')" id="nav-sessions">
           <span class="nav-icon">📅</span> Sessions & Terms
@@ -117,7 +139,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
           <div class="user-avatar"><?php echo strtoupper(substr($admin['first_name'], 0, 1)); ?></div>
           <div class="user-info">
             <div class="user-name" id="adminName"><?php echo htmlspecialchars($adminName); ?></div>
-            <div class="user-role">Super Admin</div>
+            <div class="user-role">Platform Admin</div>
           </div>
           <button class="logout-btn" onclick="handleLogout()" title="Logout">↩</button>
         </div>
@@ -133,7 +155,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
           <h2 class="topbar-title" id="topbarTitle">Dashboard</h2>
         </div>
         <div class="topbar-right">
-          <input type="text" class="topbar-search" placeholder="🔍 Search students..." id="globalSearch" oninput="handleSearch(this.value)">
+          <input type="text" class="topbar-search" placeholder="🔍 Search..." id="globalSearch" oninput="handleSearch(this.value)">
           <button class="topbar-btn ping-badge" title="Notifications" onclick="showPage('registrations')">🔔</button>
           <button class="topbar-btn" title="View Site" onclick="window.open('index.php','_blank')">🌐</button>
         </div>
@@ -142,42 +164,58 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
       <!-- ===== DASHBOARD PAGE ===== -->
       <div class="admin-page active" id="page-dashboard">
         <div class="page-header">
-          <h2 class="page-title">📊 Dashboard Overview</h2>
-          <p class="page-subtitle">Welcome back! Here's what's happening across your schools.</p>
+          <h2 class="page-title">📊 Platform Dashboard</h2>
+          <p class="page-subtitle">Welcome back! Here's what's happening across the platform.</p>
         </div>
 
         <div class="stats-grid">
           <div class="stat-card" style="--stat-color:#6BCBF7;">
+            <span class="stat-icon">🏫</span>
+            <div class="stat-value counter" data-target="0" id="stat-total-schools">0</div>
+            <div class="stat-label">Registered Schools</div>
+            <span class="stat-trend up" id="stat-schools-trend">Loading...</span>
+          </div>
+          <div class="stat-card" style="--stat-color:#4ADE80;">
             <span class="stat-icon">👥</span>
             <div class="stat-value counter" data-target="0" id="stat-students">0</div>
             <div class="stat-label">Total Students</div>
             <span class="stat-trend up" id="stat-students-trend">Loading...</span>
           </div>
-          <div class="stat-card" style="--stat-color:#A78BFA;">
-            <span class="stat-icon">👨‍🏫</span>
-            <div class="stat-value counter" data-target="0" id="stat-users">0</div>
-            <div class="stat-label">Total Users</div>
-            <span class="stat-trend up" id="stat-users-trend">Loading...</span>
-          </div>
           <div class="stat-card" style="--stat-color:#FACC15;">
             <span class="stat-icon">📋</span>
-            <div class="stat-value counter" data-target="0" id="stat-pending">0</div>
-            <div class="stat-label">Pending Registrations</div>
-            <span class="stat-trend" style="color:#FACC15;" id="stat-pending-trend">● Pending</span>
+            <div class="stat-value counter" data-target="0" id="stat-pending-schools">0</div>
+            <div class="stat-label">Pending School Approvals</div>
+            <span class="stat-trend" style="color:#FACC15;" id="stat-pending-schools-trend">● Pending</span>
           </div>
-          <div class="stat-card" style="--stat-color:#4ADE80;">
-            <span class="stat-icon">🏫</span>
-            <div class="stat-value" id="stat-schools">2</div>
-            <div class="stat-label">Active Schools</div>
-            <span class="stat-trend up">✓ All Good</span>
+          <div class="stat-card" style="--stat-color:#A78BFA;">
+            <span class="stat-icon">💰</span>
+            <div class="stat-value" id="stat-revenue">₦0.00</div>
+            <div class="stat-label">Monthly Revenue</div>
+            <span class="stat-trend up">+12%</span>
           </div>
         </div>
 
         <div class="two-col-grid">
-          <!-- Recent Registrations -->
+          <!-- Recent School Registrations -->
           <div class="admin-table-wrap">
             <div class="table-header">
-              <span class="table-title">🆕 Recent Registrations</span>
+              <span class="table-title">🆕 Recent School Registrations</span>
+              <button class="action-btn" onclick="showPage('school-approvals')">View All →</button>
+            </div>
+            <table class="admin-table">
+              <thead><tr>
+                <th>School</th><th>Plan</th><th>Contact</th><th>Status</th>
+              </tr></thead>
+              <tbody id="recentSchoolRegsTbody">
+                <tr><td colspan="4" style="text-align:center;color:var(--admin-muted);padding:2rem;"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Student Registrations -->
+          <div class="admin-table-wrap">
+            <div class="table-header">
+              <span class="table-title">🎓 Recent Student Registrations</span>
               <button class="action-btn" onclick="showPage('registrations')">View All →</button>
             </div>
             <table class="admin-table">
@@ -189,42 +227,199 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
               </tbody>
             </table>
           </div>
+        </div>
 
-          <!-- Stats by School -->
+        <div class="two-col-grid">
+          <!-- Subscription Stats -->
           <div class="chart-card">
-            <div class="chart-title">📈 Students by School</div>
-            <div id="schoolStatsContainer">
+            <div class="chart-title">📊 Subscriptions by Plan</div>
+            <div id="subscriptionStatsContainer">
               <div style="text-align:center;padding:2rem;color:var(--admin-muted);">
                 <div class="spinner"></div>
               </div>
             </div>
-            
-            <div class="chart-title" style="margin-top:1.5rem;">📊 By Age Group</div>
-            <div class="mini-bar-chart" id="ageBarChart">
-              <div style="text-align:center;padding:1rem;color:var(--admin-muted);">Loading...</div>
+          </div>
+
+          <!-- Revenue Chart -->
+          <div class="chart-card">
+            <div class="chart-title">💰 Revenue Trend</div>
+            <div id="revenueChartContainer">
+              <div style="text-align:center;padding:2rem;color:var(--admin-muted);">
+                <div class="spinner"></div>
+              </div>
             </div>
           </div>
         </div>
-
-        <style>
-          @keyframes barGrow { from{width:0} }
-          .spinner {
-            width: 30px;
-            height: 30px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: var(--admin-primary);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            display: inline-block;
-          }
-          @keyframes spin { to { transform: rotate(360deg); } }
-        </style>
       </div>
 
-      <!-- ===== REGISTRATIONS PAGE ===== -->
+      <!-- ===== SCHOOL APPROVALS PAGE ===== -->
+      <div class="admin-page" id="page-school-approvals">
+        <div class="page-header">
+          <h2 class="page-title">🏫 School Registration Approvals</h2>
+          <p class="page-subtitle">Review and approve school registration requests</p>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="table-header">
+            <span class="table-title">📋 Pending Approvals</span>
+            <div class="table-actions">
+              <select class="admin-form-select" id="approvalStatusFilter" onchange="filterSchoolApprovals()" style="padding:0.4rem 1rem; font-size:0.85rem; width:auto;">
+                <option value="pending">Pending</option>
+                <option value="all">All Status</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr>
+                <th>School Name</th><th>Contact Person</th><th>Email</th><th>Phone</th><th>Requested Plan</th><th>Subdomain</th><th>Date</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="schoolApprovalsTbody">
+                <tr><td colspan="9" style="text-align:center;padding:2rem;"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SUBSCRIPTIONS PAGE ===== -->
+      <div class="admin-page" id="page-subscriptions">
+        <div class="page-header">
+          <h2 class="page-title">💳 School Subscriptions</h2>
+          <p class="page-subtitle">Manage active school subscriptions and renewals</p>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="table-header">
+            <span class="table-title">📊 Active Subscriptions</span>
+            <div class="table-actions">
+              <button class="action-btn edit" onclick="exportSubscriptions()">📥 Export</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr>
+                <th>School</th><th>Plan</th><th>Status</th><th>Start Date</th><th>End Date</th><th>Billing Cycle</th><th>Amount</th><th>Usage</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="subscriptionsTbody">
+                <tr><td colspan="9" style="text-align:center;padding:2rem;"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== HOSTING PLANS PAGE ===== -->
+      <div class="admin-page" id="page-hosting-plans">
+        <div class="page-header">
+          <h2 class="page-title">💰 Hosting Plans</h2>
+          <p class="page-subtitle">Manage pricing tiers and plan features</p>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="table-header">
+            <span class="table-title">📦 Available Plans</span>
+            <div class="table-actions">
+              <button class="btn-save" onclick="openPlanModal(null)">+ Add Plan</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr>
+                <th>Plan Name</th><th>Monthly</th><th>Quarterly</th><th>Yearly</th><th>Students</th><th>Teachers</th><th>Storage</th><th>Features</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="hostingPlansTbody">
+                <tr><td colspan="10" style="text-align:center;padding:2rem;"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PAYMENTS PAGE ===== -->
+      <div class="admin-page" id="page-payments">
+        <div class="page-header">
+          <h2 class="page-title">💵 Payment History</h2>
+          <p class="page-subtitle">Track all subscription payments and transactions</p>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="table-header">
+            <span class="table-title">💳 All Payments</span>
+            <div class="table-actions">
+              <button class="btn-save" onclick="openPaymentModal(null)">+ Record Payment</button>
+              <button class="action-btn edit" onclick="exportPayments()">📥 Export</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr>
+                <th>School</th><th>Amount</th><th>Method</th><th>Reference</th><th>Status</th><th>Date</th><th>Processed By</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="paymentsTbody">
+                <tr><td colspan="8" style="text-align:center;padding:2rem;"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PLATFORM NEWS PAGE ===== -->
+      <div class="admin-page" id="page-platform-news">
+        <div class="page-header">
+          <h2 class="page-title">📰 Platform News</h2>
+          <p class="page-subtitle">Manage news articles displayed on the homepage</p>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="table-header">
+            <span class="table-title">📝 Published Articles</span>
+            <div class="table-actions">
+              <button class="btn-save" onclick="openNewsModal(null)">+ New Article</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr>
+                <th>Title</th><th>Category</th><th>Author</th><th>Views</th><th>Published</th><th>Featured</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="platformNewsTbody">
+                <tr><td colspan="8" style="text-align:center;padding:2rem;"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ADVERTISEMENTS PAGE ===== -->
+      <div class="admin-page" id="page-advertisements">
+        <div class="page-header">
+          <h2 class="page-title">📢 Advertisements</h2>
+          <p class="page-subtitle">Manage banner ads and promotional content</p>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="table-header">
+            <span class="table-title">🎯 Active Ads</span>
+            <div class="table-actions">
+              <button class="btn-save" onclick="openAdModal(null)">+ New Advertisement</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr>
+                <th>Title</th><th>Advertiser</th><th>Type</th><th>Position</th><th>Start Date</th><th>End Date</th><th>Impressions</th><th>Clicks</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="advertisementsTbody">
+                <tr><td colspan="10" style="text-align:center;padding:2rem;"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== EXISTING PAGES (Student Management) ===== -->
+      
+      <!-- REGISTRATIONS PAGE -->
       <div class="admin-page" id="page-registrations">
         <div class="page-header">
-          <h2 class="page-title">📋 Registration Management</h2>
+          <h2 class="page-title">📋 Student Registration Management</h2>
           <p class="page-subtitle">Review, approve, and manage student registrations</p>
         </div>
         <div class="school-header-bar">
@@ -261,7 +456,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
         </div>
       </div>
 
-      <!-- ===== STUDENTS PAGE ===== -->
+      <!-- STUDENTS PAGE -->
       <div class="admin-page" id="page-students">
         <div class="page-header">
           <h2 class="page-title">🎓 Student Management</h2>
@@ -287,7 +482,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
         </div>
       </div>
 
-      <!-- ===== RESULTS PAGE ===== -->
+      <!-- RESULTS PAGE -->
       <div class="admin-page" id="page-results">
         <div class="page-header">
           <h2 class="page-title">📝 Results Management</h2>
@@ -313,7 +508,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
         </div>
       </div>
 
-      <!-- ===== USERS PAGE ===== -->
+      <!-- USERS PAGE -->
       <div class="admin-page" id="page-users">
         <div class="page-header">
           <h2 class="page-title">👥 User Management</h2>
@@ -339,9 +534,6 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
         </div>
       </div>
 
-      <!-- Additional pages content here... (sessions, subjects, schools, etc.) -->
-      <!-- I'll create them in the next files to keep this manageable -->
-
       <!-- Placeholder pages -->
       <div class="admin-page" id="page-sessions"><h2>Academic Sessions & Terms</h2><p>Coming in next update...</p></div>
       <div class="admin-page" id="page-subjects"><h2>Subjects Management</h2><p>Coming in next update...</p></div>
@@ -349,7 +541,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
       <div class="admin-page" id="page-assignments"><h2>Assignments</h2><p>Coming in next update...</p></div>
       <div class="admin-page" id="page-fees"><h2>Fee Management</h2><p>Coming in next update...</p></div>
 
-      <!-- ===== SCHOOLS PAGE ===== -->
+      <!-- SCHOOLS PAGE -->
       <div class="admin-page" id="page-schools">
         <div class="page-header">
           <h2 class="page-title">🏫 School Profiles</h2>
@@ -360,7 +552,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
         </div>
       </div>
 
-      <!-- ===== AGE GROUPS PAGE ===== -->
+      <!-- AGE GROUPS PAGE -->
       <div class="admin-page" id="page-agegroups">
         <div class="page-header">
           <h2 class="page-title">🎂 Age Groups</h2>
@@ -382,7 +574,7 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
         </div>
       </div>
 
-      <!-- ===== ANNOUNCEMENTS PAGE ===== -->
+      <!-- ANNOUNCEMENTS PAGE -->
       <div class="admin-page" id="page-announcements">
         <div class="page-header">
           <h2 class="page-title">📢 Announcements</h2>
@@ -429,11 +621,11 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
         </div>
       </div>
 
-      <!-- ===== SETTINGS PAGE ===== -->
+      <!-- SETTINGS PAGE -->
       <div class="admin-page" id="page-settings">
         <div class="page-header">
-          <h2 class="page-title">⚙️ Portal Settings</h2>
-          <p class="page-subtitle">Configure portal options and admin credentials</p>
+          <h2 class="page-title">⚙️ Platform Settings</h2>
+          <p class="page-subtitle">Configure platform options and admin credentials</p>
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start;">
           <div class="chart-card">
@@ -453,20 +645,27 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
             <button class="btn-save" style="margin-top:1.2rem;" onclick="changePassword()">🔐 Update Password</button>
           </div>
           <div class="chart-card">
-            <h3 style="margin-bottom:1.5rem;">⚙️ Portal Configuration</h3>
+            <h3 style="margin-bottom:1.5rem;">⚙️ Platform Configuration</h3>
             <div class="admin-form-group">
-              <div class="admin-form-label">Portal Name</div>
-              <input type="text" class="admin-form-input" id="portalName" value="EduVerse Portal" placeholder="Portal name">
+              <div class="admin-form-label">Platform Name</div>
+              <input type="text" class="admin-form-input" id="portalName" value="EduVerse Portal Platform" placeholder="Platform name">
             </div>
             <div class="admin-form-group" style="margin-top:1rem;">
               <div class="admin-form-label">Admin Email</div>
-              <input type="email" class="admin-form-input" id="adminEmail" value="<?php echo htmlspecialchars($adminEmail); ?>" placeholder="admin@school.edu">
+              <input type="email" class="admin-form-input" id="adminEmail" value="<?php echo htmlspecialchars($adminEmail); ?>" placeholder="admin@eduverse.com">
             </div>
             <div class="admin-form-group" style="margin-top:1rem;">
-              <div class="admin-form-label">Registration Status</div>
+              <div class="admin-form-label">Student Registration Status</div>
               <select class="admin-form-select" id="regOpen">
-                <option value="1">✅ Open - Accepting Registrations</option>
-                <option value="0">🔒 Closed - No New Registrations</option>
+                <option value="1">✅ Open - Accepting Student Registrations</option>
+                <option value="0">🔒 Closed - No New Student Registrations</option>
+              </select>
+            </div>
+            <div class="admin-form-group" style="margin-top:1rem;">
+              <div class="admin-form-label">School Registration Status</div>
+              <select class="admin-form-select" id="schoolRegOpen">
+                <option value="1">✅ Open - Accepting School Registrations</option>
+                <option value="0">🔒 Closed - No New School Registrations</option>
               </select>
             </div>
             <button class="btn-save" style="margin-top:1.2rem;" onclick="saveSettings()">💾 Save Settings</button>
@@ -477,11 +676,25 @@ $adminEmail = $admin['email'] ?? 'admin@eduverse.com';
     </main>
   </div><!-- .admin-layout -->
 
-  <!-- MODALS - keeping your existing modal structure -->
-  <?php include 'includes/admin-modals.php'; ?>
+  <!-- MODALS - Using merged modal file -->
+  <?php include 'includes/admin-modals-merged.php'; ?>
 
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
+
+  <style>
+    @keyframes barGrow { from{width:0} }
+    .spinner {
+      width: 30px;
+      height: 30px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--admin-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 
   <script>
     // Pass PHP session data to JavaScript
