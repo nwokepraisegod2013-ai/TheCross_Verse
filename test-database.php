@@ -1,94 +1,175 @@
 <?php
-/* ============================================
-   TEST PAGE - Check Database Connection
-   ============================================ */
+/*
+==================================================================
+ DATABASE CONNECTIVITY TEST
+ Tests all database tables and connections
+==================================================================
+*/
 
 require_once __DIR__ . '/php/config.php';
 
-echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Database Test</title>";
-echo "<style>body{font-family:Arial;padding:2rem;background:#0f0e2e;color:#fff;}";
-echo "table{border-collapse:collapse;width:100%;margin:1rem 0;}";
-echo "th,td{border:1px solid #444;padding:0.8rem;text-align:left;}";
-echo "th{background:#1a1940;}.success{color:#6BCB77;}.error{color:#FF6B9D;}</style></head><body>";
+echo "<h1>🧪 Database Test Suite</h1>";
+echo "<style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    .pass { color: green; font-weight: bold; }
+    .fail { color: red; font-weight: bold; }
+    .test { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; }
+</style>";
 
-echo "<h1>🔍 EduVerse Database Test</h1>";
-echo "<p>Testing database connection and current school data...</p><hr>";
+$results = [];
 
+// Test 1: Database Connection
+echo "<div class='test'>";
+echo "<h3>Test 1: Database Connection</h3>";
 try {
     $db = getDB();
-    echo "<p class='success'>✅ Database connection successful!</p>";
-    
-    // Test 1: Get schools
-    echo "<h2>📊 Schools Table</h2>";
-    $stmt = $db->query("SELECT * FROM schools ORDER BY school_key");
-    $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if (count($schools) > 0) {
-        echo "<table>";
-        echo "<tr><th>ID</th><th>Key</th><th>Name</th><th>Motto</th><th>Mascot</th><th>Status</th></tr>";
-        foreach ($schools as $school) {
-            echo "<tr>";
-            echo "<td>{$school['id']}</td>";
-            echo "<td>{$school['school_key']}</td>";
-            echo "<td><strong>{$school['name']}</strong></td>";
-            echo "<td>{$school['motto']}</td>";
-            echo "<td style='font-size:2rem;'>{$school['mascot']}</td>";
-            echo "<td>{$school['status']}</td>";
-            echo "</tr>";
-        }
-        echo "</table>";
-        echo "<p class='success'>✅ Found " . count($schools) . " schools</p>";
-    } else {
-        echo "<p class='error'>❌ No schools found in database</p>";
-    }
-    
-    // Test 2: Get age groups
-    echo "<h2>📚 Age Groups Table</h2>";
-    $stmt = $db->query("SELECT * FROM age_groups ORDER BY min_age");
-    $ageGroups = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if (count($ageGroups) > 0) {
-        echo "<table>";
-        echo "<tr><th>ID</th><th>Icon</th><th>Name</th><th>Age Range</th><th>Level</th><th>Description</th></tr>";
-        foreach ($ageGroups as $group) {
-            echo "<tr>";
-            echo "<td>{$group['id']}</td>";
-            echo "<td style='font-size:1.5rem;'>{$group['icon']}</td>";
-            echo "<td><strong>{$group['name']}</strong></td>";
-            echo "<td>{$group['min_age']}-{$group['max_age']}</td>";
-            echo "<td>{$group['level_label']}</td>";
-            echo "<td>{$group['description']}</td>";
-            echo "</tr>";
-        }
-        echo "</table>";
-        echo "<p class='success'>✅ Found " . count($ageGroups) . " age groups</p>";
-    } else {
-        echo "<p class='error'>❌ No age groups found in database</p>";
-    }
-    
-    // Test 3: Check what register.php will see
-    echo "<h2>🎯 What Register.php Will Display</h2>";
-    echo "<div style='background:#1a1940;padding:1rem;border-radius:8px;'>";
-    foreach ($schools as $school) {
-        echo "<h3>{$school['mascot']} {$school['name']}</h3>";
-        echo "<p style='color:#888;'>{$school['motto']}</p>";
-        echo "<p><strong>School Key:</strong> {$school['school_key']}</p>";
-        echo "<hr style='border-color:#444;'>";
-    }
-    echo "</div>";
-    
-    // Test 4: JSON output (what JavaScript will get)
-    echo "<h2>📋 JSON Data (for JavaScript)</h2>";
-    echo "<div style='background:#000;padding:1rem;border-radius:8px;overflow:auto;'>";
-    echo "<pre style='color:#6BCB77;'>const schoolsData = " . json_encode($schools, JSON_PRETTY_PRINT) . ";</pre>";
-    echo "</div>";
-    
+    echo "<span class='pass'>✅ PASS</span> - Connected to database<br>";
+    $results[] = true;
 } catch (Exception $e) {
-    echo "<p class='error'>❌ Database Error: " . htmlspecialchars($e->getMessage()) . "</p>";
-    echo "<p>Check your php/config.php file and database credentials.</p>";
+    echo "<span class='fail'>❌ FAIL</span> - " . $e->getMessage() . "<br>";
+    $results[] = false;
+}
+echo "</div>";
+
+// Test 2: Required Tables Exist
+echo "<div class='test'>";
+echo "<h3>Test 2: Required Tables</h3>";
+$requiredTables = [
+    'users', 'schools', 'student_profiles', 'registrations',
+    'hosting_plans', 'school_subscriptions', 'school_registration_requests',
+    'payment_history', 'live_classes', 'class_attendance',
+    'school_admins', 'platform_news', 'platform_ads', 'settings'
+];
+
+$missingTables = [];
+foreach ($requiredTables as $table) {
+    try {
+        $db->query("SELECT 1 FROM {$table} LIMIT 1");
+        echo "✅ Table '{$table}' exists<br>";
+    } catch (Exception $e) {
+        echo "<span class='fail'>❌ Missing table: {$table}</span><br>";
+        $missingTables[] = $table;
+    }
 }
 
-echo "<hr><p><a href='register.php' style='color:#6BCBF7;'>→ Go to Register Page</a> | ";
-echo "<a href='index.php' style='color:#6BCBF7;'>→ Go to Home Page</a></p>";
-echo "</body></html>";
-?>
+if (empty($missingTables)) {
+    echo "<br><span class='pass'>✅ PASS</span> - All tables exist<br>";
+    $results[] = true;
+} else {
+    echo "<br><span class='fail'>❌ FAIL</span> - Missing " . count($missingTables) . " tables<br>";
+    $results[] = false;
+}
+echo "</div>";
+
+// Test 3: Sample Data
+echo "<div class='test'>";
+echo "<h3>Test 3: Sample Data Verification</h3>";
+
+// Count records
+$counts = [
+    'Schools' => $db->query("SELECT COUNT(*) FROM schools")->fetchColumn(),
+    'Users' => $db->query("SELECT COUNT(*) FROM users")->fetchColumn(),
+    'Plans' => $db->query("SELECT COUNT(*) FROM hosting_plans")->fetchColumn(),
+    'Settings' => $db->query("SELECT COUNT(*) FROM settings")->fetchColumn()
+];
+
+foreach ($counts as $type => $count) {
+    echo "{$type}: <strong>{$count}</strong> records<br>";
+}
+
+if ($counts['Plans'] > 0) {
+    echo "<br><span class='pass'>✅ PASS</span> - Database has sample data<br>";
+    $results[] = true;
+} else {
+    echo "<br><span class='fail'>⚠️ WARNING</span> - No hosting plans found<br>";
+    $results[] = false;
+}
+echo "</div>";
+
+// Test 4: Database Queries
+echo "<div class='test'>";
+echo "<h3>Test 4: Complex Queries</h3>";
+
+try {
+    // Join query
+    $stmt = $db->query("
+        SELECT s.name, COUNT(sp.id) as student_count
+        FROM schools s
+        LEFT JOIN student_profiles sp ON s.school_key = sp.school_key
+        GROUP BY s.id
+    ");
+    $schools = $stmt->fetchAll();
+    echo "✅ Complex JOIN query working<br>";
+    echo "Schools with student counts: " . count($schools) . "<br>";
+    
+    // Subquery
+    $stmt = $db->query("
+        SELECT * FROM hosting_plans 
+        WHERE id IN (SELECT requested_plan_id FROM school_registration_requests)
+    ");
+    echo "✅ Subquery working<br>";
+    
+    echo "<br><span class='pass'>✅ PASS</span> - All queries execute successfully<br>";
+    $results[] = true;
+} catch (Exception $e) {
+    echo "<span class='fail'>❌ FAIL</span> - Query error: " . $e->getMessage() . "<br>";
+    $results[] = false;
+}
+echo "</div>";
+
+// Test 5: Write Operations
+echo "<div class='test'>";
+echo "<h3>Test 5: Write Operations</h3>";
+
+try {
+    $db->beginTransaction();
+    
+    // Insert test record
+    $stmt = $db->prepare("
+        INSERT INTO settings (setting_key, setting_value, category) 
+        VALUES ('test_key', 'test_value', 'test')
+    ");
+    $stmt->execute();
+    $testId = $db->lastInsertId();
+    echo "✅ INSERT successful (ID: {$testId})<br>";
+    
+    // Update test record
+    $stmt = $db->prepare("UPDATE settings SET setting_value = 'updated_value' WHERE id = ?");
+    $stmt->execute([$testId]);
+    echo "✅ UPDATE successful<br>";
+    
+    // Delete test record
+    $stmt = $db->prepare("DELETE FROM settings WHERE id = ?");
+    $stmt->execute([$testId]);
+    echo "✅ DELETE successful<br>";
+    
+    $db->commit();
+    
+    echo "<br><span class='pass'>✅ PASS</span> - All write operations successful<br>";
+    $results[] = true;
+} catch (Exception $e) {
+    $db->rollBack();
+    echo "<span class='fail'>❌ FAIL</span> - Write error: " . $e->getMessage() . "<br>";
+    $results[] = false;
+}
+echo "</div>";
+
+// Summary
+echo "<div class='test' style='background: #e3f2fd;'>";
+echo "<h2>📊 Test Summary</h2>";
+$passed = count(array_filter($results));
+$total = count($results);
+$percentage = ($passed / $total) * 100;
+
+echo "<p style='font-size: 18px;'>";
+echo "Passed: <strong>{$passed}/{$total}</strong> ({$percentage}%)";
+echo "</p>";
+
+if ($percentage == 100) {
+    echo "<h3 class='pass'>🎉 ALL TESTS PASSED!</h3>";
+    echo "<p>Database is ready for production!</p>";
+} else {
+    echo "<h3 class='fail'>⚠️ SOME TESTS FAILED</h3>";
+    echo "<p>Please fix the issues above before going live.</p>";
+}
+echo "</div>";
